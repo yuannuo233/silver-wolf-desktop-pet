@@ -1,0 +1,10 @@
+{
+  // Keep UTF-8 so Chinese strings in the UI/README never turn into mojibake.
+  "files.encoding": "utf8",
+  "files.autoGuessEncoding": false,
+  "[python]": {
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true
+  },
+  "python.analysis.extraPaths": ["${workspaceFolder}"]
+}

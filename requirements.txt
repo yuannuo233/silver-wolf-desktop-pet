@@ -1,0 +1,3 @@
+# 运行必需：帧动画缩放 / 抠图 / 图标圆角都靠 Pillow
+# tkinter 为标准库自带；AI 聊天走标准库 urllib，无需 requests
+Pillow>=10.0.0

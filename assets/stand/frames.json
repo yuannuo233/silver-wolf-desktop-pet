@@ -1,0 +1,811 @@
+{
+  "sprite": {
+    "canvas_width": 190,
+    "canvas_height": 216,
+    "baseline_y": 210,
+    "center_x": 95,
+    "character_height": 200,
+    "note": "全部帧来自本地 H3 生成的视频抽帧（白底抠图、190x216 标准化、脚底对齐）。idle 28 帧（100ms/帧）取自视频第 4~31 帧，里面包含两次真正的闭眼，所以待机会眨眼；run 18 帧按 24fps 原速播放（42ms/帧），循环无丢帧；turn 8 帧 + 1 帧混合过渡，取视频里真正的『正面转侧身』区间；wave/doze/stretch/lollipop 为右键菜单里的动作，播一次自动回待机。"
+  },
+  "states": {
+    "idle": {
+      "loop": true,
+      "frames": [
+        {
+          "file": "idle_01.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_02.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_03.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_04.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_05.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_06.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_07.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_08.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_09.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_10.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_11.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_12.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_13.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_14.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_15.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_16.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_17.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_18.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_19.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_20.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_21.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_22.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_23.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_24.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_25.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_26.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_27.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_28.png",
+          "duration_ms": 100
+        }
+      ]
+    },
+    "run_right": {
+      "loop": true,
+      "frames": [
+        {
+          "file": "run_right_01.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_02.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_03.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_04.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_05.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_06.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_07.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_08.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_09.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_10.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_11.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_12.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_13.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_14.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_15.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_16.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_17.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_18.png",
+          "duration_ms": 42
+        }
+      ]
+    },
+    "run_left": {
+      "loop": true,
+      "frames": [
+        {
+          "file": "run_left_01.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_02.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_03.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_04.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_05.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_06.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_07.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_08.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_09.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_10.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_11.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_12.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_13.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_14.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_15.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_16.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_17.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_18.png",
+          "duration_ms": 42
+        }
+      ]
+    },
+    "turn_right": {
+      "loop": false,
+      "frames": [
+        {
+          "file": "turn_right_01.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_right_02.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_right_03.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_right_04.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_right_05.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_right_06.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_right_07.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_right_08.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_right_09.png",
+          "duration_ms": 70
+        }
+      ]
+    },
+    "turn_left": {
+      "loop": false,
+      "frames": [
+        {
+          "file": "turn_left_01.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_left_02.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_left_03.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_left_04.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_left_05.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_left_06.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_left_07.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_left_08.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_left_09.png",
+          "duration_ms": 70
+        }
+      ]
+    },
+    "wave": {
+      "loop": false,
+      "frames": [
+        {
+          "file": "wave_01.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_02.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_03.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_04.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_05.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_06.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_07.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_08.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_09.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_10.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_11.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_12.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_13.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_14.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_15.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_16.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_17.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "wave_18.png",
+          "duration_ms": 110
+        }
+      ]
+    },
+    "doze": {
+      "loop": false,
+      "frames": [
+        {
+          "file": "doze_01.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_02.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_03.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_04.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_05.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_06.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_07.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_08.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_09.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_10.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_11.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_12.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_13.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_14.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_15.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_16.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_17.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "doze_18.png",
+          "duration_ms": 110
+        }
+      ]
+    },
+    "stretch": {
+      "loop": false,
+      "frames": [
+        {
+          "file": "stretch_01.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_02.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_03.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_04.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_05.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_06.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_07.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_08.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_09.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_10.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_11.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_12.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_13.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_14.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_15.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_16.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_17.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "stretch_18.png",
+          "duration_ms": 110
+        }
+      ]
+    },
+    "lollipop": {
+      "loop": false,
+      "frames": [
+        {
+          "file": "lollipop_01.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_02.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_03.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_04.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_05.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_06.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_07.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_08.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_09.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_10.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_11.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_12.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_13.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_14.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_15.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_16.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_17.png",
+          "duration_ms": 110
+        },
+        {
+          "file": "lollipop_18.png",
+          "duration_ms": 110
+        }
+      ]
+    },
+    "typing": {
+      "loop": true,
+      "frames": [
+        {
+          "file": "typing_01.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "typing_02.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "typing_03.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "typing_04.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "typing_05.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "typing_06.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "typing_07.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "typing_08.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "typing_09.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "typing_10.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "typing_11.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "typing_12.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "typing_13.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "typing_14.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "typing_15.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "typing_16.png",
+          "duration_ms": 90
+        }
+      ]
+    },
+    "console": {
+      "loop": true,
+      "frames": [
+        {
+          "file": "console_01.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "console_02.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "console_03.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "console_04.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "console_05.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "console_06.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "console_07.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "console_08.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "console_09.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "console_10.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "console_11.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "console_12.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "console_13.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "console_14.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "console_15.png",
+          "duration_ms": 90
+        },
+        {
+          "file": "console_16.png",
+          "duration_ms": 90
+        }
+      ]
+    }
+  }
+}
