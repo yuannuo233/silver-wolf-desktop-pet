@@ -14,7 +14,7 @@ import ui
 from ui import C, F, Card, Pill, ThemeDots, label, rrect
 
 NAV = (("home", "主页", "◈"), ("chat", "聊天", "✧"), ("settings", "设置", "⚙"))
-VERSION = "v0.6.18"
+VERSION = "v0.6.19"
 
 
 def _force_foreground(hwnd):

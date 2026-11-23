@@ -10,6 +10,7 @@ from tkinter import ttk
 import ai_client
 import config
 import prompts
+import updater
 from ui import C, F, Pill, label
 
 PROVIDERS = [
@@ -31,6 +32,7 @@ class SettingsPanel(tk.Frame):
         super().__init__(master, bg=C["card"])
         self.pet = pet
         self.cfg = config.load()
+        self.check_updates_var = tk.BooleanVar(value=bool(self.cfg.get("check_updates", True)))
         self._build()
         self._fill_form()
 
@@ -94,9 +96,23 @@ class SettingsPanel(tk.Frame):
         bottom.pack(fill="x", padx=18, pady=(2, 14))
         Pill(bottom, "保存", self._save, kind="primary", h=34).pack(side="left")
         Pill(bottom, "发一句测试", self._test, kind="ghost", h=34).pack(side="left", padx=10)
+        Pill(bottom, "检查更新", self._check_update, kind="ghost", h=34).pack(side="left")
         self.status = label(bottom, "", font=F["small"], fg=C["dim"], bg=C["card"], wraplength=300,
                             justify="left")
         self.status.pack(side="left", padx=6)
+
+        # Update-check switch. On by default: publishing a Release only notifies watchers, so
+        # the app has to look for itself or nobody who merely downloaded the zip ever hears
+        # about a new version. Off means zero network traffic beyond the AI chat you configured.
+        opt = tk.Frame(self, bg=C["card"])
+        opt.pack(fill="x", padx=18, pady=(0, 6))
+        cb = tk.Checkbutton(
+            opt, text="启动时检查新版本（只读取 GitHub 的版本号，不上传任何数据）",
+            variable=self.check_updates_var, font=F["small"],
+            bg=C["card"], fg=C["sub"], activebackground=C["card"], activeforeground=C["txt"],
+            selectcolor=C["field"], bd=0, highlightthickness=0, anchor="w",
+        )
+        cb.pack(fill="x")
 
         # Terms notice. Kept short on purpose: the full text lives in TERMS.md / DISCLAIMER.md,
         # but the "you are responsible for your own use" line has to be visible in the app, not
@@ -173,13 +189,21 @@ class SettingsPanel(tk.Frame):
         size = 200
         if self.pet is not None:
             size = self.pet.settings.get("size_height", 200)
-        return {
+        else:
+            size = self.cfg.get("size_height", 200)
+        # Start from the stored config and override only the fields this panel owns.
+        # Returning a fresh dict (the old behaviour) silently wiped every other key — theme,
+        # follow_activity, terms_seen, the update-dismissal tag — the moment the user hit Save.
+        out = dict(self.cfg)
+        out.update({
             "base_url": self.url.get().strip(),
             "api_key": self.key.get().strip(),
             "model": self.model.get().strip(),
             "prompt_text": self.prompt.get("1.0", "end").strip() or prompts.PROMPTS["平衡版"],
             "size_height": size,
-        }
+            "check_updates": bool(self.check_updates_var.get()),
+        })
+        return out
 
     def _save(self):
         self.cfg = self._collect()
@@ -206,6 +230,57 @@ class SettingsPanel(tk.Frame):
             self.after(0, lambda: self.status.configure(text=msg, fg=C["warn"]))
             return
         self.after(0, lambda: self.status.configure(text="回复：" + reply[:24], fg=C["mint"]))
+
+    # ---------- Update check ----------
+
+    def _check_update(self):
+        """Ask GitHub for the newest release and report it in the status line."""
+        from app import VERSION      # imported lazily: app imports this module
+
+        self.status.configure(text="正在检查更新…", fg=C["sub"])
+        panel = self
+
+        def done(info):
+            # Marshal back to the Tk thread. Guarded because the panel can be destroyed
+            # (theme switch rebuilds the whole page) before the request returns.
+            try:
+                panel.after(0, lambda: panel._show_update_result(info, VERSION))
+            except (tk.TclError, AttributeError):
+                pass          # widget gone; nothing to update
+
+        updater.check_async(VERSION, done)
+
+    def _show_update_result(self, info, current):
+        """Report the outcome. `info` is None both for 'up to date' and for 'no answer', so
+        distinguish them: an unreachable server must not be reported as 'up to date'."""
+        try:
+            if info:
+                tag = info["tag"]
+                self.status.configure(text="发现新版本 %s（点「去下载」打开下载页）" % tag,
+                                      fg=C["warn"])
+                self._bind_update_link(info.get("page"))
+            elif updater.last_error is None:
+                self.status.configure(text="已是最新版本（%s）" % current, fg=C["mint"])
+            else:
+                self.status.configure(text="检查失败：网络不通或被限流，稍后再试", fg=C["warn"])
+        except tk.TclError:
+            pass
+
+    def _bind_update_link(self, page):
+        if not page:
+            return
+        try:
+            import webbrowser
+            for w in self.status.master.winfo_children():
+                if isinstance(w, Pill) and getattr(w, "_update_link", False):
+                    return
+            btn = Pill(self.status.master, "去下载", kind="primary", h=34)
+            btn._update_link = True
+            btn.configure(cursor="hand2")
+            btn.pack(side="left", padx=6)
+            btn.bind("<Button-1>", lambda _e: webbrowser.open(page))
+        except Exception:
+            pass
 
 
 class SettingsWindow:

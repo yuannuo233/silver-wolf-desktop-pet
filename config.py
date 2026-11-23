@@ -24,6 +24,11 @@ DEFAULTS = {
     "terms_seen": False,
     # Follow my activity: keystrokes in any app -> pet types; a game in front -> pet plays handheld.
     "follow_activity": True,
+    # Check GitHub for a newer release on startup. On by default so update notices reach the
+    # people who already downloaded the exe (they are invisible to GitHub otherwise).
+    "check_updates": True,
+    # Tag the user has already been told about, so the same release is announced only once.
+    "update_dismissed": "",
 }
 
 

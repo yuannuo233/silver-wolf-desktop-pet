@@ -86,6 +86,7 @@ import tkinter as tk
 
 import config
 import ui
+from app import VERSION as APP_VERSION
 from app import MainApp
 from pet import SilverWolfPet
 
@@ -351,6 +352,59 @@ def show_terms_once(root) -> None:
         pass
 
 
+def show_update_notice(pet, info, version):
+    """Tell the user a newer release exists, in her own voice.
+
+    A speech bubble rather than a modal dialog: this is a desktop pet, a block of system UI
+    would be jarring, and the bubble is what she already uses to talk. The download link goes
+    into the bubble text because Tk labels cannot carry clickable links.
+    """
+    try:
+        tag = info.get("tag", "")
+        page = info.get("page", "")
+        pet.show_bubble("有新版本 %s 了（现在是 %s）。下载：%s" % (tag, version, page), 12000)
+    except Exception:
+        pass
+
+
+def check_updates_on_start(root, pet, version):
+    """Check GitHub once at startup and nudge the user if there is something newer.
+
+    This is the only channel that reaches people who merely downloaded the exe: publishing a
+    Release only notifies watchers, and GitHub never reveals who downloaded. Runs off the UI
+    thread so a slow or blocked network cannot delay startup.
+    """
+    try:
+        import updater
+        cfg = config.load()
+        if not cfg.get("check_updates", True):
+            return
+    except Exception:
+        return
+
+    def done(info):
+        # Hop back to the Tk thread before touching widgets.
+        root.after(0, lambda: _on_result(info))
+
+    def _on_result(info):
+        try:
+            if not info:
+                return                      # offline, blocked, or already current: stay quiet
+            cfg2 = config.load()
+            if cfg2.get("update_dismissed") == info.get("tag"):
+                return                      # already told about this exact release
+            cfg2["update_dismissed"] = info.get("tag", "")
+            config.save(cfg2)
+            show_update_notice(pet, info, version)
+        except Exception:
+            pass
+
+    try:
+        updater.check_async(version, done)
+    except Exception:
+        pass
+
+
 def main() -> None:
     hide_own_console()
     claim_taskbar_identity()
@@ -396,6 +450,8 @@ def main() -> None:
 
     root.after(700, warn_missing_pillow)
     root.after(900, lambda: show_terms_once(root))
+    # Give the startup animation a moment first; the check itself runs off-thread.
+    root.after(2500, lambda: check_updates_on_start(root, pet, APP_VERSION))
 
     root.mainloop()
 
