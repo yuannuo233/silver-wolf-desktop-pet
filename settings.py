@@ -98,6 +98,16 @@ class SettingsPanel(tk.Frame):
                             justify="left")
         self.status.pack(side="left", padx=6)
 
+        # Terms notice. Kept short on purpose: the full text lives in TERMS.md / DISCLAIMER.md,
+        # but the "you are responsible for your own use" line has to be visible in the app, not
+        # only in the repository, or nobody will ever read it.
+        notice = label(
+            self,
+            "本程序仅限桌面装饰与娱乐用途。使用、修改或再分发本程序的行为由实施者自行"
+            "承担全部责任，与原作者无关；详见仓库 TERMS.md 与 DISCLAIMER.md。",
+            font=F["small"], fg=C["dim"], bg=C["card"], wraplength=520, justify="left")
+        notice.pack(fill="x", padx=18, pady=(0, 14))
+
     def _dark_combo_style(self):
         style = ttk.Style(self)
         try:

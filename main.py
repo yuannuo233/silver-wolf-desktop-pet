@@ -9,6 +9,65 @@ import io
 import sys
 from pathlib import Path
 
+# ---- environment gate -------------------------------------------------------
+# Fail loudly *and readably* on the wrong interpreter / OS. Without this, running on
+# Python 3.8 or on macOS surfaces as a wall of traceback from deep inside ctypes, which
+# tells a user nothing. See README "系统与环境要求" for the measured minimums.
+MIN_PY = (3, 10)
+
+
+def _bail(title, detail):
+    """Show the reason in a message box when possible, print it otherwise, then exit.
+
+    The text always goes to stderr FIRST: if the process was started from a console (the .bat,
+    an IDE, a remote shell) the user sees it there even when no message box can appear.
+    """
+    msg = "%s\n\n%s" % (title, detail)
+    try:
+        sys.stderr.write("[SilverWolfPet] " + msg.replace("\n", "\n[SilverWolfPet] ") + "\n")
+        sys.stderr.flush()
+    except Exception:
+        pass
+    try:
+        import tkinter.messagebox as mb
+        import tkinter as _tk
+        _r = _tk.Tk()
+        _r.withdraw()
+        mb.showerror("银狼桌宠 · 无法启动", msg)
+        _r.destroy()
+    except Exception:
+        pass
+    sys.exit(1)
+
+
+if sys.version_info < MIN_PY:
+    _bail(
+        "Python 版本过低：%d.%d（需要 %d.%d 或更高）"
+        % (sys.version_info[0], sys.version_info[1], MIN_PY[0], MIN_PY[1]),
+        "当前解释器：%s\n\n请安装 Python %d.%d 或更高版本（64 位）后重试。\n"
+        "下载：https://www.python.org/downloads/windows/\n"
+        "安装时请勾选「tcl/tk and IDLE」（tkinter 界面库）。\n"
+        "或者直接用发布页的 exe，完全不需装 Python。"
+        % (sys.executable, MIN_PY[0], MIN_PY[1]),
+    )
+
+if sys.platform != "win32":
+    _bail(
+        "不支持当前操作系统：%s" % sys.platform,
+        "本项目依赖 Windows 专有的窗口 API（透明桌宠窗口、任务栏按钮、键盘钩子），\n"
+        "在 macOS / Linux 上无法运行。\n\n"
+        "详细原因见仓库 LIMITATIONS.md。\n"
+        "想跨平台用，请走 PROTOCOL.md 里的 L3 事件通道（由宿主提供活动状态）。",
+    )
+
+if sys.maxsize <= 2 ** 32:
+    _bail(
+        "需要 64 位 Python",
+        "检测到 32 位解释器：%s\n\n"
+        "程序里有多处 Win32 指针按 64 位声明，32 位下会崩溃。\n"
+        "请安装 64 位 Python，或直接用发布页的 exe。" % sys.executable,
+    )
+
 # ★ Windows HiDPI (e.g. 150% scaling): make the process DPI-aware.
 # Otherwise tkinter assumes a 1280x720 logical screen, so pet position,
 # size and mouse coords all drift by the scale factor.
@@ -221,6 +280,77 @@ def claim_taskbar_identity() -> None:
         pass
 
 
+def warn_missing_pillow() -> None:
+    """Warn once when Pillow is absent.
+
+    The app still starts without it (pet.py degrades to a single floating frame), and that
+    silent degradation is exactly the confusing part: it looks like a broken animation rather
+    than a missing dependency. Say so out loud, once, then let them carry on.
+    """
+    try:
+        import PIL
+        _ = PIL.__version__          # touch it so the import is not flagged as unused
+        return
+    except ImportError:
+        pass
+    msg = (
+        "缺少 Pillow，帧动画将退化为单帧浮动模式。\n\n"
+        "安装命令（在项目目录下执行）：\n"
+        "    python -m pip install -r requirements.txt\n\n"
+        "或直接安装：python -m pip install Pillow\n\n"
+        "装好后重启本程序即可恢复完整动画。"
+    )
+    try:
+        import tkinter.messagebox as mb
+        mb.showwarning("银狼桌宠 · 缺少 Pillow", msg)
+    except Exception:
+        sys.stderr.write(msg + "\n")
+
+
+def show_terms_once(root) -> None:
+    """Show the terms notice the first time the app runs, then never again.
+
+    The licence and TERMS.md already say the authors are not responsible for how anyone uses
+    this code, but a file in a repository is easy to never open. Showing it once — in the app
+    itself — makes the boundary visible to whoever actually runs it.
+    """
+    try:
+        cfg = config.load()
+        if cfg.get("terms_seen"):
+            return
+        cfg["terms_seen"] = True
+        config.save(cfg)
+    except Exception:
+        return
+    try:
+        win = tk.Toplevel(root)
+        win.title("使用条款")
+        win.configure(bg=ui.C["card"])
+        win.attributes("-topmost", True)
+        win.resizable(False, False)
+        body = (
+            "本程序仅限桌面装饰与娱乐用途。\n\n"
+            "使用、修改或再分发本程序的行为，由实施者自行承担全部责任，\n"
+            "与原作者无关。原作者不认可、不参与、也无法监督任何下游使用。\n\n"
+            "禁止用于违法、未授权入侵、恶意软件、窃取凭证、诈骗、\n"
+            "侵权或商业用途。\n\n"
+            "完整条款见仓库中的 TERMS.md、DISCLAIMER.md 与 LICENSE。"
+        )
+        tk.Label(win, text=body, bg=ui.C["card"], fg=ui.C["txt"],
+                 font=("Microsoft YaHei UI", 10), justify="left",
+                 padx=22, pady=18).pack()
+        tk.Button(win, text="我知道了", width=14, relief="flat",
+                  bg=ui.C["acc"], fg=ui.C["on_acc"],
+                  font=("Microsoft YaHei UI", 10),
+                  command=win.destroy).pack(pady=(0, 18))
+        win.update_idletasks()
+        w, h = win.winfo_reqwidth(), win.winfo_reqheight()
+        sw, sh = win.winfo_screenwidth(), win.winfo_screenheight()
+        win.geometry(f"+{(sw - w) // 2}+{(sh - h) // 3}")
+    except tk.TclError:
+        pass
+
+
 def main() -> None:
     hide_own_console()
     claim_taskbar_identity()
@@ -263,6 +393,9 @@ def main() -> None:
         root.after(delay, lambda: (show_in_taskbar(root), set_window_icon(root)))
     root.attributes("-topmost", True)
     root.after(250, lambda: root.attributes("-topmost", False))
+
+    root.after(700, warn_missing_pillow)
+    root.after(900, lambda: show_terms_once(root))
 
     root.mainloop()
 

@@ -20,6 +20,8 @@ DEFAULTS = {
     "prompt_text": PROMPTS["平衡版"],   # active persona prompt (editable)
     "size_height": 200,      # sprite height in px
     "theme": "light",        # UI theme: light / dark / cyber
+    # Set to True once the first-run terms notice has been shown (see main.py).
+    "terms_seen": False,
     # Follow my activity: keystrokes in any app -> pet types; a game in front -> pet plays handheld.
     "follow_activity": True,
 }

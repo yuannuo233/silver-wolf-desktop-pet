@@ -390,6 +390,12 @@ class SilverWolfPet:
                 self._pending_run = None
                 self._turning = False
                 self.set_anim_state("idle")
+            elif self.anim_state in ("run_right", "run_left"):
+                # Caught up with the cursor but the button is still held. Keep her standing
+                # still in idle rather than leaving a run cycle playing on the spot — a run
+                # animation with no movement is exactly the "treading in place" look. The next
+                # real mouse movement starts the chase (and its turn) again.
+                self.set_anim_state("idle")
             return
         self.win.geometry(f"+{round(x + dx / dist * step)}+{round(y + dy / dist * step)}")
 
@@ -400,14 +406,23 @@ class SilverWolfPet:
         self._goto_target = (x, y)
         # Stamp the clock only on the first target; _move_step is driven by _tick_anim and owns
         # the timer from there. Re-stamping per mouse event would make dt collapse to ~1ms and
-        # she would advance well under a pixel per frame — the "crawling / stuttering" look.
+        # she would advance well under a pixel per frame — the "crawling" look.
         if self._goto_job is None:
             self._goto_t = time.monotonic()
             self._goto_job = True     # marker only; the animation loop does the stepping
-        dx = x - self.win.winfo_x()
-        dy = y - self.win.winfo_y()
-        if abs(dx) >= abs(dy) * 0.6:      # mostly horizontal -> show the side run
-            self._start_run("run_right" if dx >= 0 else "run_left")
+        # Only pick a facing / start a run when there is nothing playing yet AND the cursor has
+        # actually moved away. Doing this on every motion event restarts the sequence
+        # (anim_idx = 0) dozens of times a second, so the turn can never play past its first
+        # frame and she just treads in place beside the cursor.
+        if self.anim_state in ("idle", "typing", "console"):
+            dx = x - self.win.winfo_x()
+            dy = y - self.win.winfo_y()
+            if math.hypot(dx, dy) < GOTO_MIN_DIST:
+                return                # already at the cursor; nothing to chase
+            if abs(dx) >= abs(dy) * 0.6:  # mostly horizontal -> show the side run
+                self._start_run("run_right" if dx >= 0 else "run_left")
+            elif "run_right" in self.anim:
+                self._start_run("run_right")   # vertical moves still need a moving body
 
     def _cancel_goto(self):
         self._goto_target = None
@@ -434,20 +449,22 @@ class SilverWolfPet:
         """Face the direction of travel, playing the full turn transition, then run.
 
         The turn (turn_right / turn_left) is the "front view -> side view" pose sequence that
-        makes her read as a character instead of a sliding sprite, so it plays in full rather
-        than being truncated. It is not free — the transition is 9 frames — which is why a
-        chase already in progress only flips the run cycle instead of turning again.
+        makes her read as a character instead of a sliding sprite, so it must play in full.
+        Two guards keep it intact:
+          · already turning -> do nothing at all (restarting it would freeze frame 0 forever);
+          · a direction change mid-run flips the run cycle instantly instead of turning again.
         """
         if self.anim_state == state:
             return
+        if self._turning:
+            return                     # a turn is in flight; let it finish, do not restart it
         turn = "turn_right" if state == "run_right" else "turn_left"
-        # Turn only from a standing pose. If she is already in a run cycle, flipping between
-        # run_left / run_right is instant (that is a direction change, not a turn).
         if turn in self.anim and self.anim_state in ("idle", "typing", "console"):
             self._turning = True
             self._pending_run = state
             self.anim_state = turn
             self.anim_idx = 0
+            self._notify_state(turn)
             return
         self._turning = False
         self._pending_run = None

@@ -22,6 +22,11 @@
    承担责任（详见 `LICENSE` 中的免责条款）。
 7. **侵权联系。** 如认为本项目内容侵犯您的合法权益，请通过仓库 Issues 联系，
    核实后将尽快处理（修改 / 下架相关内容）。
+8. **使用行为与责任隔离（重要）。** 本项目仅限桌面装饰与娱乐用途。**任何人对本软件
+   的使用、修改、再分发行为，由其实施者自行承担全部责任，与原作者无关。**
+   原作者不认可、不参与、无法监督任何下游使用。完整条款见 **[TERMS.md](TERMS.md)**，
+   其中包含禁止用途清单、责任限制与赔偿条款。**再分发时请务必保留 `LICENSE`、
+   `TERMS.md` 与本文件。**
 
 ## English
 
@@ -48,3 +53,11 @@
    `LICENSE`).
 7. **Takedown contact.** If you believe any content infringes your rights,
    please open an Issue; verified concerns will be addressed promptly.
+8. **Use and liability isolation (important).** This project is for desktop
+   decoration and entertainment only. **Anyone who uses, modifies or
+   redistributes this software bears full responsibility for their own conduct;
+   the authors are not responsible for it.** The authors do not endorse, take
+   part in, or have any ability to monitor downstream use. Full terms —
+   including prohibited uses, limitation of liability and indemnity — are in
+   **[TERMS.md](TERMS.md)**. **Keep LICENSE, TERMS.md and this file when
+   redistributing.**
