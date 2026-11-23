@@ -16,7 +16,7 @@ from ui import C, F, Card, Pill, ThemeDots, label, rrect
 NAV = (("home", "主页", "◈"), ("chat", "聊天", "✧"),
        ("characters", "角色", "☰"), ("announce", "公告", "✉"),
        ("settings", "设置", "⚙"))
-VERSION = "v0.6.21"
+VERSION = "v0.6.22"
 
 
 def _force_foreground(hwnd):
@@ -209,7 +209,180 @@ class TitleBar(tk.Canvas):
         self._press = None
 
 
+class ScrollablePage(tk.Frame):
+    """A page whose content can be scrolled when it does not fit.
+
+    The window is frameless, so there is no system scrollbar. Pages are stacked with
+    place() and each one is normally sized to fit the window; the problem is that on a short
+    screen (1366x768) or with a large font scale, the bottom of a page gets clipped with no
+    way to reach it.
+
+    The content goes into a Canvas that is taller than the visible area; the scrollbar sits
+    next to it and only shows when the content actually overflows. Mouse wheel scrolling
+    works over the whole page.
+    """
+
+    def __init__(self, master, app, **kw):
+        super().__init__(master, bg=C["bg"], **kw)
+        self.app = app
+        self.canvas = tk.Canvas(self, bg=C["bg"], highlightthickness=0, bd=0)
+        self.vbar = tk.Scrollbar(self, orient="vertical", command=self.canvas.yview,
+                                 width=10, troughcolor=C["bg"], bg=C["line"],
+                                 activebackground=C["acc"], bd=0, highlightthickness=0)
+        self.canvas.configure(yscrollcommand=self._on_scroll)
+
+        self.body = tk.Frame(self.canvas, bg=C["bg"])
+        self._win = self.canvas.create_window((0, 0), window=self.body, anchor="nw")
+        self._bar_shown = False      # whether the scrollbar is currently packed
+
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.vbar.pack(side="right", fill="y")
+
+        # The body keeps its own height; the canvas window must follow it, and the canvas
+        # must follow the visible area.
+        self.body.bind("<Configure>", self._on_body_configure)
+        self.canvas.bind("<Configure>", self._on_canvas_configure)
+        self.bind("<MouseWheel>", self._on_wheel)
+        self.body.bind("<MouseWheel>", self._on_wheel)
+
+    def _on_scroll(self, first, last):
+        """Show the scrollbar only when there is something to scroll.
+
+        The decision is made from the numbers, not from winfo_ismapped(): packing a widget
+        does not map it until the event loop runs, so the visibility check would lag one
+        cycle behind and the bar would never appear.
+        """
+        try:
+            f = float(first)
+            l = float(last)
+        except (TypeError, ValueError):
+            return
+        need = f > 0.001 or l < 0.999
+        if need and not self._bar_shown:
+            self.vbar.pack(side="right", fill="y")
+            self._bar_shown = True
+            self.after_idle(self._sync_width)
+        elif not need and self._bar_shown:
+            self.vbar.pack_forget()
+            self._bar_shown = False
+            self.after_idle(self._sync_width)
+        self.vbar.set(first, last)
+
+    def _on_body_configure(self, _e=None):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self._sync_width()
+
+    def _on_canvas_configure(self, event):
+        self._sync_width()
+
+    def _sync_width(self):
+        """Keep the inner frame exactly as wide as the visible canvas area.
+
+        The canvas is wider than the visible strip when the scrollbar is packed, so the
+        frame width must subtract it — otherwise the content is wider than the window and
+        a horizontal scrollbar appears.
+        """
+        try:
+            w = self.canvas.winfo_width()
+            if self._bar_shown:
+                w -= self.vbar.winfo_width()
+            self.canvas.itemconfig(self._win, width=max(1, w))
+        except tk.TclError:
+            pass
+
+    def _on_wheel(self, event):
+        """Mouse wheel scrolling. step is platform-signed already."""
+        try:
+            self.canvas.yview_scroll(-int(event.delta / 120), "units")
+        except tk.TclError:
+            pass
+
+    def scroll_to_top(self):
+        try:
+            self.canvas.yview_moveto(0)
+        except tk.TclError:
+            pass
+
+
+class ResizeGrip(tk.Frame):
+    """Drag handle in the bottom-right corner that resizes the window.
+
+    The window is overrideredirect, so the system frame (and with it the native resize
+    border) is gone. Without this the user cannot make the window bigger on a small screen,
+    which is exactly when they need it most.
+
+    It is drawn as three small diagonal strokes, the usual "grip corner" affordance.
+    """
+
+    SIZE = 18
+
+    def __init__(self, parent, app):
+        # Tk knows the X11 name "nwse-resize" but not the Windows one; "size_ne_sw" is the
+        # standard Windows cursor for a south-east resize handle.
+        super().__init__(parent, bg=C["bg"], cursor="size_ne_sw")
+        self.app = app
+        self._start = None       # (mouse x_root, y_root, window w, window h)
+        self.canvas = tk.Canvas(self, bg=C["bg"], highlightthickness=0, bd=0,
+                                width=self.SIZE, height=self.SIZE)
+        self.canvas.pack()
+        self.canvas.bind("<ButtonPress-1>", self._on_press)
+        self.canvas.bind("<B1-Motion>", self._on_drag)
+        self.canvas.bind("<ButtonRelease-1>", self._on_release)
+        self.canvas.bind("<Enter>", lambda _e: self._paint(True))
+        self.canvas.bind("<Leave>", lambda _e: self._paint(False))
+        self._paint(False)
+
+    def _paint(self, hovered):
+        c = self.canvas
+        c.delete("all")
+        col = C["acc"] if hovered else C["dim"]
+        s = self.SIZE
+        for i in range(3):
+            off = 4 + i * 4
+            c.create_line(s - off, s - 2, s - 2, s - off, fill=col, width=1)
+
+    def _on_press(self, event):
+        root = self.app.root
+        self.app._user_sized = True
+        self._start = (event.x_root, event.y_root,
+                       root.winfo_width(), root.winfo_height())
+
+    def _on_drag(self, event):
+        if self._start is None:
+            return
+        mx, my, w0, h0 = self._start
+        root = self.app.root
+        # Allow both directions: dragging towards the top-left shrinks the window.
+        nw = w0 + (event.x_root - mx)
+        nh = h0 + (event.y_root - my)
+        nw = max(self.app.MIN_W, nw)
+        nh = max(self.app.MIN_H, nh)
+        # Keep the window on screen.
+        sw = root.winfo_screenwidth()
+        sh = root.winfo_screenheight()
+        nw = min(nw, sw - root.winfo_x())
+        nh = min(nh, sh - root.winfo_y())
+        root.geometry(f"{nw}x{nh}+{root.winfo_x()}+{root.winfo_y()}")
+        # The grip sits on top of the content, so the page has to be told to re-measure.
+        self.app.refresh_cards()
+        self.app.root.update_idletasks()
+
+    def _on_release(self, _event):
+        self._start = None
+        self.app.refresh_cards()
+        self.app.root.after(60, self.app._reflow)
+
+
 class MainApp:
+    """Main window: dark Silver Wolf terminal look — narrow nav rail left, content right.
+
+    v0.6 visual rework: near-black base + Silver Wolf purple, rounded cards, pill buttons,
+    mono accents. No default grey tkinter buttons and no big pale colour blocks.
+    """
+
+    MIN_W = 560        # smallest the user may drag the window to
+    MIN_H = 420
+
     def __init__(self, root: tk.Tk, images: dict, rebuild_images=None):
         self.root = root
         self.images = images
@@ -221,6 +394,7 @@ class MainApp:
         self.current_page = "home"
         self._ready = False
         self._placed = False          # centre once on first height fit, then only resize.
+        self._user_sized = False      # True after the user drags the resize grip.
         self.rail = None
         self.wrap = None
 
@@ -231,7 +405,9 @@ class MainApp:
         sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
         w, h = min(1000, sw - 40), min(760, sh - 60)
         root.geometry(f"{w}x{h}+{(sw - w) // 2}+{(sh - h) // 3}")
-        root.minsize(760, 560)
+        # Minimum size is small enough that the content can be squeezed on a short screen;
+        # the pages scroll, so nothing gets lost.
+        root.minsize(self.MIN_W, self.MIN_H)
         root.configure(bg=C["bg"])
         if images.get("icon") is not None:
             try:
@@ -253,6 +429,12 @@ class MainApp:
         self.titlebar.pack(side="top", fill="x")
         self.body = tk.Frame(self.inner, bg=C["bg"])
         self.body.pack(side="top", fill="both", expand=True)
+
+        # Resize grip in the bottom-right corner. It lives in `inner` (not `shell`) so it
+        # sits inside the 1px outline and does not cover the border.
+        self.grip = ResizeGrip(self.inner, self)
+        self.grip.place(relx=1.0, rely=1.0, anchor="se",
+                        x=-2, y=-2)
 
         # overrideredirect windows do not take keyboard focus on click; without this the inputs cannot type.
         root.bind("<Button-1>", self._wake_focus, add="+")
@@ -293,14 +475,24 @@ class MainApp:
 
         v0.6.8: centre only on the very first placement; later page or theme switches just resize.
         A window the user has moved is never dragged back to the middle of the screen.
+
+        Once the user has resized the window by hand, stop auto-fitting the height: the
+        whole point of dragging the corner is to keep the size they chose. The pages scroll,
+        so a short window no longer loses content.
         """
         self.root.update_idletasks()
         w = self.root.winfo_width() or 1000
-        page = self.pages[key or self.current_page]
+        holder = self.pages[key or self.current_page]
+        # Measure the content inside the scroll area, not the scroll area itself: the
+        # holder is sized by the window, but the window should follow the content.
+        page = getattr(holder, "body", holder)
         off = max(0, page.winfo_rooty() - self.root.winfo_rooty())
         need = off + page.winfo_reqheight() + 12
         sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-        h = max(560, min(need, sh - 60, 900))
+        if self._user_sized:
+            h = self.root.winfo_height() or 620
+        else:
+            h = max(560, min(need, sh - 60, 900))
         if self._placed:
             x, y = self.root.winfo_x(), self.root.winfo_y()
         else:
@@ -439,14 +631,24 @@ class MainApp:
                     "characters": self._build_characters, "announce": self._build_announce,
                     "settings": self._build_settings}
         for key, build in builders.items():
-            page = tk.Frame(container, bg=C["bg"])
-            page.place(x=0, y=0, relwidth=1, relheight=1)
+            # Every page sits inside a ScrollablePage: when the content does not fit the
+            # window (short screen, large font scale), the user can scroll instead of
+            # losing the bottom of the page.
+            holder = ScrollablePage(container, self)
+            holder.place(x=0, y=0, relwidth=1, relheight=1)
+            page = holder.body
             build(page)
-            self.pages[key] = page
+            self.pages[key] = holder
 
     def show_page(self, key):
         self.current_page = key
-        self.pages[key].tkraise()
+        holder = self.pages[key]
+        holder.tkraise()
+        # A fresh page should start at the top, not wherever the last one was scrolled to.
+        try:
+            holder.scroll_to_top()
+        except AttributeError:
+            pass
         for k, item in self.nav_items.items():
             item.active = (k == key)
             item._draw()
