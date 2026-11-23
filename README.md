@@ -24,7 +24,7 @@ with just `Pillow` (`pip install -r requirements.txt`).
 
 ## 🚀 立即使用（无需编程 / No coding needed）
 
-1. 前往 [Releases 页面](../../releases)（发布后可用；也可用简介里的备用下载）
+1. 前往 [Releases 页面](../../releases)（已发布 v0.6.17）
 2. 下载 `SilverWolfPet-v0.6.17-win64.zip`（或 Releases 里最新版本）
 3. 解压，**双击 `SilverWolfPet.exe`**
 4. 主界面弹出（主页 / 聊天 / 设置），同时银狼出现在屏幕右下角！
@@ -47,7 +47,7 @@ with just `Pillow` (`pip install -r requirements.txt`).
 目标：安装银狼桌宠（SilverWolfPet）
 步骤：
 1. 下载最新 Release 的 zip：
-   https://github.com/<YOUR_USERNAME>/silver-wolf-desktop-pet/releases/latest
+   https://github.com/yuannuo233/silver-wolf-desktop-pet/releases/latest
    （资产名形如 SilverWolfPet-v0.6.17-win64.zip）
 2. 解压 zip 到任意目录（如 C:\Tools\SilverWolfPet）
 3. 运行 SilverWolfPet.exe；如遇 SmartScreen 蓝色警告，
@@ -84,7 +84,7 @@ with just `Pillow` (`pip install -r requirements.txt`).
 ## 🛠️ 从源码运行（开发者）
 
 ```bash
-git clone https://github.com/<YOUR_USERNAME>/silver-wolf-desktop-pet.git
+git clone https://github.com/yuannuo233/silver-wolf-desktop-pet.git
 cd silver-wolf-desktop-pet
 pip install -r requirements.txt   # 只有 Pillow 一个依赖
 python main.py
@@ -104,6 +104,18 @@ pyinstaller --noconsole --onefile --name SilverWolfPet --icon icon.ico ^
 ```
 
 （不要用 `--splash`：PyInstaller 闪屏在部分机器上会残留/挡住主窗口。）
+
+
+## 📁 仓库里都有什么
+
+```text
+main.py / app.py / pet.py / ui.py / settings.py   程序本体（9 个 .py）
+config.py / ai_client.py / lines.py / prompts.py
+assets/               立绘 3 张 + banner
+assets/stand/         11 组帧动画共 186 张 PNG + frames.json
+icon.png / icon.ico   应用图标
+启动银狼桌宠.bat        双击即用（优先 pythonw，无控制台）
+```
 
 ## Replace the sprite 换成你自己的立绘
 
