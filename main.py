@@ -241,6 +241,17 @@ def main() -> None:
         hd_path=str(resource_path("assets/silver_wolf_hd.png")),
     )
     app.attach_pet(pet)
+    # Let an interop host ask for a theme switch (PROTOCOL.md, event "theme").
+    pet.on_theme_request = app.set_theme
+
+    # L3 interop bridge (PROTOCOL.md): lets another pet framework feed her activity state and
+    # receive her state/chat events. Optional — if the directory cannot be created it stays off.
+    try:
+        import interop
+        pet.interop = interop.Interop(pet)
+        pet.interop.start()
+    except Exception:
+        pet.interop = None
 
     # Make sure the window shows up in FRONT on launch.
     root.update_idletasks()

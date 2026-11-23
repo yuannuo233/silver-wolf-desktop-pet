@@ -1,4 +1,4 @@
-﻿# Silver Wolf Desktop Pet 银狼桌宠
+# Silver Wolf Desktop Pet 银狼桌宠
 
 > “Hack into your desktop.” —— 银狼钻进你的电脑里啦
 
@@ -109,13 +109,32 @@ pyinstaller --noconsole --onefile --name SilverWolfPet --icon icon.ico ^
 ## 📁 仓库里都有什么
 
 ```text
-main.py / app.py / pet.py / ui.py / settings.py   程序本体（9 个 .py）
+main.py / app.py / pet.py / ui.py / settings.py   程序本体
 config.py / ai_client.py / lines.py / prompts.py
+interop.py            跨宠物系统互通桥（协议见 PROTOCOL.md）
 assets/               立绘 3 张 + banner
 assets/stand/         11 组帧动画共 186 张 PNG + frames.json
+scripts/              抠图工具 + .petpack 导出
 icon.png / icon.ico   应用图标
 启动银狼桌宠.bat        双击即用（优先 pythonw，无控制台）
 ```
+
+## 📌 先看这两个文档
+
+- **[LIMITATIONS.md](LIMITATIONS.md) —— 局限说明**：只能跑 Windows、为什么、哪些能移植；
+  帧动画不是骨骼动画所以做不到什么；AI 聊天支持范围；打包与分发的坑。
+  **下载前建议先读，免得把已知限制当 bug。**
+- **[PROTOCOL.md](PROTOCOL.md) —— 桌宠互操作协议（草案）**：三级能力模型（素材包 / 行为包 /
+  事件包），可以把银狼接入 LongCat 那类多宠物框架，也能让别的桌宠复用她的素材。
+  协议已实现 L1 导出脚本与 L3 事件通道：
+
+  ```bash
+  python scripts/export_petpack.py --zip    # 导出 silver-wolf.petpack（任何引擎可读）
+  ```
+
+  L3 事件通道走文件，零依赖：外部往
+  `%APPDATA%\SilverWolfPet\interop\inbox.jsonl` 追加一行 JSON 即可控制她，
+  她的状态与聊天会写到同目录 `outbox.jsonl`。
 
 ## Replace the sprite 换成你自己的立绘
 
@@ -137,8 +156,11 @@ python scripts/remove_background.py 你的图.png 输出.png 32
 - [x] v0.4 多状态动画状态机（frames.json 规格）
 - [x] v0.6 H3 素材帧动画全面接管：待机眨眼 / 跑动 / 转身过渡 / 右键动作 / 敲键盘 / 玩掌机
 - [x] v0.6.13+ 自绘一体化标题栏 + 三主题 + 跟着你做事
-- [x] v0.6.17 任务栏图标/按钮 + 黑控制台自隐藏 + 窗口轮廓
+- [x] v0.6.17 任务栏图标/按钮 + 黑控制台自隐藏 + 窗口轮廓 + 拖拽追光标（自己的速度）+ 转身动画
+- [x] v0.6.17 互通协议 L1 素材包导出 + L3 事件通道；局限说明
 - [ ] 多角色皮肤
+- [ ] L2 行为包（规则从代码里抽到 pack.json）
+- [ ] macOS / Linux（靠 L3 把前台感知交给宿主）
 
 ## Disclaimer 免责声明
 

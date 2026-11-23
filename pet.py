@@ -44,10 +44,20 @@ ACTIONS = (("wave", "挥手打招呼"), ("doze", "打个盹"), ("stretch", "伸�
 # 320px/s matches the stride of those short legs — neither too fast nor too slow.
 RUN_SPEED = 320
 GOTO_MIN_DIST = 8         # closer than this, snap to the point instead of running.
-# How many turn frames to show before switching into the run cycle. The full transition is
-# 9 frames (630ms) and stands still for all of it — fine when settling, but during a chase it
-# looks like she is stuck in place. Three frames is enough to read as "she turned".
-TURN_FRAMES = 3
+# Movement is stepped from the animation loop (one step per drawn frame), never from a second
+# timer: two independent after-loops drift against each other and the window then advances in
+# uneven bursts, which is exactly what reads as "stuttering". MAX_STEP_S only guards against a
+# long stall (window drag, GC) and must stay well above one frame, otherwise every slightly
+# late frame gets clamped and the speed silently drops.
+MAX_STEP_S = 0.25
+# Floor for the next animation tick. Never schedule 0ms (Tk would busy-loop and starve the
+# rest of the event queue, which shows up as frozen input).
+MIN_TICK_MS = 4
+# Animation time scale. The run cycle is authored at 42ms/frame (18 frames = 756ms), which is
+# 21fps — the eye reads that as a slideshow, and at 320px/s every frame also jumps her forward
+# by 60px, so the motion arrives in visible hops. Running the same 18 frames faster keeps the
+# walk cycle identical while the window moves in much finer steps.
+ANIM_SPEEDUP = 0.62        # 42ms -> ~26ms per run frame, ≈38fps
 
 # These games in front -> she pulls out a handheld (lowercase substring match on the exe).
 GAME_EXES = ("starrail", "genshin", "zenless", "arknights", "steam", "epicgames",
@@ -170,6 +180,10 @@ class SilverWolfPet:
         self.history = []
         self.on_chat_event = None     # callback(role, text) -> main chat page log
         self.on_open_main = None      # callback() -> raise the main window
+        self.on_theme_request = None  # callback(name) -> interop asked for a theme switch
+        self.interop = None           # L3 bridge (interop.py), set by main()
+        self._host_activity = False   # True while an interop host owns the activity state
+        self._action_live = False     # a one-shot action is playing; activity must not steal it
         self.settings_win = None
         self.chat_win = None         # quick-chat card from double-click (must exist before use).
         self.chat_entry = None
@@ -188,12 +202,12 @@ class SilverWolfPet:
         self.anim_once = set()       # states that play once then return to idle (actions, turns).
         self._pending_run = None     # direction to run after the turn transition finishes.
         self._turning = False        # playing a turn transition; do not interrupt it with a run.
-        self._turn_left = None       # frames remaining before a short pivot chains to run.
         self._click_job = None       # delayed single-click check (so a double-click can cancel it).
         self._act_state = None       # follow-activity state: None / typing / console.
         self._goto_target = None     # drop point she runs to at her own speed.
         self._goto_job = None
         self._goto_t = 0.0
+        self._tick_t0 = time.monotonic()   # 上一帧动画开始的时刻（算补偿延迟用）
 
         # --- the pet lives in its own frameless Toplevel window ---
         self.win = tk.Toplevel(owner)
@@ -320,8 +334,10 @@ class SilverWolfPet:
                     img.putalpha(alpha)
                     buf = io.BytesIO()
                     img.save(buf, "PNG")
-                    seq.append((tk.PhotoImage(data=base64.b64encode(buf.getvalue())),
-                                fr["duration_ms"]))
+                    ms = fr["duration_ms"]
+                    if state in ("run_right", "run_left", "turn_right", "turn_left"):
+                        ms = max(MIN_TICK_MS, int(ms * ANIM_SPEEDUP))
+                    seq.append((tk.PhotoImage(data=base64.b64encode(buf.getvalue())), ms))
                 if seq:                 # never register empty states, or switching raises IndexError.
                     states[state] = seq
                     if not sdef.get("loop", True):
@@ -340,21 +356,13 @@ class SilverWolfPet:
     # A turn transition plays first when she has to face a new direction, and no movement
     # happens during it (that is what makes it read as "turning", not "sliding").
 
-    def _start_goto(self, x, y):
-        if not self.anim:                 # no-Pillow fallback: snap straight to the point.
-            self.win.geometry(f"+{x}+{y}")
-            return
-        self._goto_target = (x, y)
-        self._goto_t = time.monotonic()
-        dx = x - self.win.winfo_x()
-        dy = y - self.win.winfo_y()
-        if abs(dx) >= abs(dy) * 0.6:      # mostly horizontal -> show the side run
-            self._start_run("run_right" if dx >= 0 else "run_left")
-        if self._goto_job is None:
-            self._goto_job = self.win.after(16, self._goto_tick)
+    def _move_step(self):
+        """Advance one frame's worth of movement toward the pending target.
 
-    def _goto_tick(self):
-        self._goto_job = None
+        Called from _tick_anim so movement and animation share a single clock. It moves by the
+        real elapsed time (not a fixed step), which keeps the speed correct even though a run
+        frame is 42ms while a turn frame is 70ms.
+        """
         tgt = self._goto_target
         if tgt is None:
             return
@@ -363,32 +371,47 @@ class SilverWolfPet:
             self._goto_target = None
             return
         now = time.monotonic()
-        dt = min(0.05, now - self._goto_t)
+        dt = min(MAX_STEP_S, now - self._goto_t)
         self._goto_t = now
-        # Movement is allowed during a short chase pivot (TURN_FRAMES) so she starts running
-        # immediately. Only the full-length settle transition still holds still.
-        if not self._turning or self._turn_left is not None:
-            x, y = self.win.winfo_x(), self.win.winfo_y()
-            dx, dy = tgt[0] - x, tgt[1] - y
-            dist = math.hypot(dx, dy)
-            step = RUN_SPEED * dt
-            if dist <= max(step, 2):
-                self.win.geometry(f"+{tgt[0]}+{tgt[1]}")
-                self._goto_target = None
+        # No movement while the turn transition plays: sliding during it is what made the old
+        # version look like ice skating, and the whole point of the turn is to be seen.
+        if self._turning:
+            return
+        x, y = self.win.winfo_x(), self.win.winfo_y()
+        dx, dy = tgt[0] - x, tgt[1] - y
+        dist = math.hypot(dx, dy)
+        step = RUN_SPEED * dt
+        if dist <= max(step, 2):
+            self.win.geometry(f"+{tgt[0]}+{tgt[1]}")
+            self._goto_target = None
+            if not self.dragged:
+                # Only settle to idle when the drag is over. Doing it mid-chase made her
+                # flicker idle -> turn -> run on every small mouse move.
                 self._pending_run = None
+                self._turning = False
                 self.set_anim_state("idle")
-                return
-            self.win.geometry(f"+{round(x + dx / dist * step)}+{round(y + dy / dist * step)}")
-        self._goto_job = self.win.after(16, self._goto_tick)
+            return
+        self.win.geometry(f"+{round(x + dx / dist * step)}+{round(y + dy / dist * step)}")
+
+    def _start_goto(self, x, y):
+        if not self.anim:                 # no-Pillow fallback: snap straight to the point.
+            self.win.geometry(f"+{x}+{y}")
+            return
+        self._goto_target = (x, y)
+        # Stamp the clock only on the first target; _move_step is driven by _tick_anim and owns
+        # the timer from there. Re-stamping per mouse event would make dt collapse to ~1ms and
+        # she would advance well under a pixel per frame — the "crawling / stuttering" look.
+        if self._goto_job is None:
+            self._goto_t = time.monotonic()
+            self._goto_job = True     # marker only; the animation loop does the stepping
+        dx = x - self.win.winfo_x()
+        dy = y - self.win.winfo_y()
+        if abs(dx) >= abs(dy) * 0.6:      # mostly horizontal -> show the side run
+            self._start_run("run_right" if dx >= 0 else "run_left")
 
     def _cancel_goto(self):
         self._goto_target = None
-        if self._goto_job is not None:
-            try:
-                self.win.after_cancel(self._goto_job)
-            except tk.TclError:
-                pass
-            self._goto_job = None
+        self._goto_job = None
 
     def _do_click(self):
         """Single click without a drag -> say a line."""
@@ -400,34 +423,35 @@ class SilverWolfPet:
         if self.anim and state in self.anim and state != self.anim_state:
             self.anim_state = state
             self.anim_idx = 0
+            self._notify_state(state)
+
+    def _notify_state(self, state):
+        """Announce a state change to a connected host (PROTOCOL.md, outbox)."""
+        if self.interop is not None:
+            self.interop.send({"t": "state", "value": state})
 
     def _start_run(self, state):
-        """Face the direction of travel and start running.
+        """Face the direction of travel, playing the full turn transition, then run.
 
-        The turn transition (turn_right / turn_left) is a full 9-frame / 630ms pose. Standing
-        still for it looks fine when she is just settling, but during a chase it reads as
-        "stuck in place" — the exact complaint. So a chase plays only the first few turn frames
-        (a quick pivot, ~200ms, during which she may already move) and then chains to the run
-        cycle. The long version stays for the release-time settle.
+        The turn (turn_right / turn_left) is the "front view -> side view" pose sequence that
+        makes her read as a character instead of a sliding sprite, so it plays in full rather
+        than being truncated. It is not free — the transition is 9 frames — which is why a
+        chase already in progress only flips the run cycle instead of turning again.
         """
         if self.anim_state == state:
             return
         turn = "turn_right" if state == "run_right" else "turn_left"
-        can_turn = turn in self.anim and self.anim_state in ("idle", "typing", "console")
-        if can_turn:
-            self._start_turn(turn, state)
+        # Turn only from a standing pose. If she is already in a run cycle, flipping between
+        # run_left / run_right is instant (that is a direction change, not a turn).
+        if turn in self.anim and self.anim_state in ("idle", "typing", "console"):
+            self._turning = True
+            self._pending_run = state
+            self.anim_state = turn
+            self.anim_idx = 0
             return
         self._turning = False
         self._pending_run = None
         self.set_anim_state(state)
-
-    def _start_turn(self, turn, then_run):
-        """Play a short pivot, then chain to the run cycle (see _start_run)."""
-        self._turning = True
-        self._pending_run = then_run
-        self._turn_left = TURN_FRAMES
-        self.anim_state = turn
-        self.anim_idx = 0
 
     def play_action(self, state):
         """Right-click action: play once then return to idle (repeatable)."""
@@ -437,6 +461,10 @@ class SilverWolfPet:
         self._turning = False
         self.anim_state = state
         self.anim_idx = 0
+        # Register that a one-shot is running so _apply_activity does not steal it on the next
+        # poll. _tick_anim clears this when the sequence finishes.
+        self._action_live = state in self.anim_once
+        self._notify_state(state)
 
     def _start_animation(self):
         if self.anim:
@@ -450,20 +478,6 @@ class SilverWolfPet:
         if photo is not self._cur_photo:      # skip the redraw when the frame is unchanged.
             self.canvas.itemconfigure(self.sprite, image=photo)
             self._cur_photo = photo
-        # A short pivot (see _start_turn): bail out into the run cycle after TURN_FRAMES so a
-        # chase does not stand still for the whole 630ms transition.
-        if self._turning and self._turn_left is not None:
-            self._turn_left -= 1
-            if self._turn_left <= 0:
-                nxt_state = self._pending_run
-                self._turning = False
-                self._turn_left = None
-                self._pending_run = None
-                if nxt_state and nxt_state in self.anim:
-                    self.anim_state = nxt_state
-                    self.anim_idx = 0
-                self.win.after(ms, self._tick_anim)
-                return
         nxt = self.anim_idx + 1
         if nxt < len(seq):
             self.anim_idx = nxt
@@ -473,13 +487,33 @@ class SilverWolfPet:
                 self.anim_state = self._pending_run
                 self._pending_run = None
                 self._turning = False
-                self._turn_left = None
             else:
                 self.anim_state = "idle"
+                self._action_live = False
             self.anim_idx = 0
         else:
             self.anim_idx = 0
-        self.win.after(ms, self._tick_anim)
+        # Movement is driven from here on purpose, not from a second after-loop. Two
+        # independent timers drift against each other, and the window then advances in
+        # uneven bursts (the visible "stutter"). One clock, one step per drawn frame.
+        self._move_step()
+        self._schedule_next(seq[self.anim_idx][1] if self.anim_idx < len(seq) else ms)
+
+    def _schedule_next(self, frame_ms):
+        """Queue the next animation tick at the frame's declared interval.
+
+        Measured behaviour of Tk's after() on this machine: it rarely honours the exact delay,
+        and it fires about 6~10ms early for short delays. Compensating for the elapsed time
+        *on top of that* made it alternate between 32ms and 10ms (a visible jitter), because
+        every early wake-up then asked for a correspondingly longer sleep. A flat interval is
+        what actually produces an even cadence: 42ms frames measured 36~42ms apart, which is
+        what the eye reads as smooth.
+        """
+        delay = max(MIN_TICK_MS, int(frame_ms))
+        try:
+            self.win.after(delay, self._tick_anim)
+        except tk.TclError:
+            pass                      # window destroyed
 
     def show(self):
         """Re-summon the pet (after 'hide')."""
@@ -513,8 +547,17 @@ class SilverWolfPet:
     def _apply_activity(self):
         if not self.anim or not self.settings.get("follow_activity", True):
             return
-        if self.dragged or self._turning or self.anim_state not in ("idle", "typing", "console"):
-            return                     # dragging or a one-shot action is playing, do not take over.
+        # An interop host (PROTOCOL.md) may own the activity state. When it does, its events are
+        # authoritative: the local foreground-window probe would otherwise overwrite whatever the
+        # host just set on the very next 1.2s poll.
+        if self._host_activity:
+            return
+        # Also skip while a goto is still in flight: she is mid-run to the drop point, and
+        # letting typing/console steal the state here cancels her trip and strands the run frames.
+        if self.dragged or self._turning or self._goto_target is not None:
+            return
+        if self._action_live or self.anim_state not in ("idle", "typing", "console"):
+            return                     # a one-shot action is playing, do not take over.
         exe, pid = _foreground_exe()
         want = None
         if exe and pid != os.getpid() and exe not in SHELL_EXES:
@@ -593,8 +636,11 @@ class SilverWolfPet:
         self._last_drag_x = None
         self._dir_acc = 0
         if self.dragged:
-            # Release = settle exactly on the drop point, at her own speed (the goto tick keeps
-            # running until she arrives), then idle.
+            # Release = settle exactly on the drop point, at her own speed (the shared animation
+            # clock keeps stepping until she arrives), then idle. `dragged` must be cleared
+            # BEFORE the last _start_goto: _move_step only skips the idle settle while a chase
+            # is live, so leaving it True here would strand her in the run cycle forever.
+            self.dragged = False
             tx = event.x_root - self.drag_offset[0]
             ty = event.y_root - self.drag_offset[1]
             if math.hypot(tx - self.win.winfo_x(), ty - self.win.winfo_y()) >= GOTO_MIN_DIST:
@@ -603,19 +649,18 @@ class SilverWolfPet:
                 self._pending_run = None
                 self._turning = False
                 self.set_anim_state("idle")
-        else:
-            if self.anim:
-                self._pending_run = None
-                self._turning = False
-                self.set_anim_state("idle")
-            # A single click waits a moment: a double-click cancels it.
-            if self._click_job is not None:
-                try:
-                    self.win.after_cancel(self._click_job)
-                except tk.TclError:
-                    pass
-            self._click_job = self.win.after(240, self._do_click)
-        self.dragged = False
+            return
+        if self.anim:
+            self._pending_run = None
+            self._turning = False
+            self.set_anim_state("idle")
+        # A single click waits a moment: a double-click cancels it.
+        if self._click_job is not None:
+            try:
+                self.win.after_cancel(self._click_job)
+            except tk.TclError:
+                pass
+        self._click_job = self.win.after(240, self._do_click)
 
     def _on_double(self, _event):
         self._cancel_goto()
@@ -795,6 +840,8 @@ class SilverWolfPet:
                 self.on_chat_event(role, text)
             except tk.TclError:
                 pass  # the log widget is gone; bubble still works
+        if self.interop is not None:
+            self.interop.send({"t": "chat", "role": role, "text": text})
 
     # ---------- menus / windows ----------
 
