@@ -176,10 +176,16 @@ def _typing_now() -> bool:
 class SilverWolfPet:
     """The floating sprite + interactions + idle animation + AI chat."""
 
-    def __init__(self, owner: tk.Tk, image_path: str, hd_path: str = None):
+    def __init__(self, owner: tk.Tk, image_path: str, hd_path: str = None,
+                 character: dict = None):
         self.owner = owner            # the main window (destroying it quits all)
         self.base_path = image_path
         self.hd_path = hd_path
+        # Which character this is (characters.py). None keeps the historical single-character
+        # behaviour: sprite beside an "assets/stand" folder, name from prompts.py.
+        self.character = character or {}
+        self.char_name = self.character.get("name") or "银狼"
+        self._stand_dir = Path(self.character["stand"]) if self.character.get("stand") else None
         self.settings = config.load()
         self.history = []
         self.on_chat_event = None     # callback(role, text) -> main chat page log
@@ -315,7 +321,9 @@ class SilverWolfPet:
         if not HAS_PIL:
             return
         try:
-            stand = Path(self.base_path).parent / "stand"
+            # A character pack declares its own frame directory; the legacy layout keeps the
+            # "stand" folder beside the sprite.
+            stand = self._stand_dir or (Path(self.base_path).parent / "stand")
             spec = json.loads((stand / "frames.json").read_text(encoding="utf-8"))
             cw, ch = spec["sprite"]["canvas_width"], spec["sprite"]["canvas_height"]
             scale = int(self.settings.get("size_height", 200)) / 200.0

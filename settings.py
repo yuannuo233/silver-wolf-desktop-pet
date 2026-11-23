@@ -76,6 +76,10 @@ class SettingsPanel(tk.Frame):
         self._section("MODEL", "模型名，照厂商文档填")
         self.model = self._entry()
 
+        # Character switching lives on its own page (nav "角色") — it needs a list with
+        # per-character state, which does not fit a one-line button row here.
+        self._chosen_character = self.cfg.get("character", "")
+
         self._section("PERSONA", "三档人设，点一下填进去，之后随便改")
         row = tk.Frame(self, bg=C["card"])
         row.pack(fill="x", padx=18, pady=(0, 7))
@@ -202,6 +206,7 @@ class SettingsPanel(tk.Frame):
             "prompt_text": self.prompt.get("1.0", "end").strip() or prompts.PROMPTS["平衡版"],
             "size_height": size,
             "check_updates": bool(self.check_updates_var.get()),
+            "character": getattr(self, "_chosen_character", out.get("character", "")),
         })
         return out
 

@@ -419,10 +419,19 @@ def main() -> None:
     images = build_images()
 
     app = MainApp(root, images, build_images)
+    # Which character to show (characters.py). Unknown or missing packs fall back to the
+    # default, so a bad config value can never leave the user with no pet at all.
+    try:
+        import characters
+        spec = characters.get(config.load().get("character", ""))
+    except Exception:
+        spec = {"name": "银狼", "sprite": str(resource_path("assets/silver_wolf.png")),
+                "hd_sprite": str(resource_path("assets/silver_wolf_hd.png"))}
     pet = SilverWolfPet(
         root,
-        str(resource_path("assets/silver_wolf.png")),
-        hd_path=str(resource_path("assets/silver_wolf_hd.png")),
+        spec.get("sprite") or str(resource_path("assets/silver_wolf.png")),
+        hd_path=spec.get("hd_sprite") or str(resource_path("assets/silver_wolf_hd.png")),
+        character=spec,
     )
     app.attach_pet(pet)
     # Let an interop host ask for a theme switch (PROTOCOL.md, event "theme").

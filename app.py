@@ -13,8 +13,9 @@ import settings as settings_ui
 import ui
 from ui import C, F, Card, Pill, ThemeDots, label, rrect
 
-NAV = (("home", "主页", "◈"), ("chat", "聊天", "✧"), ("settings", "设置", "⚙"))
-VERSION = "v0.6.19"
+NAV = (("home", "主页", "◈"), ("chat", "聊天", "✧"),
+       ("characters", "角色", "☰"), ("settings", "设置", "⚙"))
+VERSION = "v0.6.20"
 
 
 def _force_foreground(hwnd):
@@ -433,7 +434,8 @@ class MainApp:
         container = tk.Frame(wrap, bg=C["bg"])
         container.pack(fill="both", expand=True)
         self.container = container
-        builders = {"home": self._build_home, "chat": self._build_chat, "settings": self._build_settings}
+        builders = {"home": self._build_home, "chat": self._build_chat,
+                    "characters": self._build_characters, "settings": self._build_settings}
         for key, build in builders.items():
             page = tk.Frame(container, bg=C["bg"])
             page.place(x=0, y=0, relwidth=1, relheight=1)
@@ -448,6 +450,7 @@ class MainApp:
             item._draw()
         titles = {"home": ("主页", "银狼已经挂在你屏幕上了，随时待命"),
                   "chat": ("聊天", "说的话会同时出现在她头顶的气泡里"),
+                  "characters": ("角色", "已经加入的角色都在这，点一下就能换"),
                   "settings": ("设置", "接一个 OpenAI 兼容接口，她就有脑子了")}
         t, s = titles[key]
         self.page_title.configure(text=t)
@@ -456,6 +459,8 @@ class MainApp:
             self._refresh_status()
         if key == "chat":
             self.chat_entry.focus_set()
+        if key == "characters":
+            self._refresh_characters()
         if self._ready:
             self._fit_window(key)
             self.root.after(40, self._reflow)
@@ -534,6 +539,125 @@ class MainApp:
     def _summon(self):
         if self.pet is not None:
             self.pet.show()
+
+    # ---------- Characters page ----------
+    def _build_characters(self, page):
+        """List every character pack found under characters/.
+
+        Read from disk rather than a hard-coded list so dropping in a new pack is enough.
+        Each row shows the current character, how many frames it has, and a switch button.
+        """
+        self._char_rows = []
+        self._char_hint = label(page, "", font=F["mono_s"], fg=C["dim"])
+        self._char_hint.pack(anchor="w", padx=28, pady=(14, 0))
+
+        card = Card(page, radius=16, pad=6, stretch=True)
+        card.pack(fill="both", expand=True, padx=24, pady=(10, 0))
+        self._char_list = tk.Frame(card.body, bg=C["card"])
+        self._char_list.pack(fill="both", expand=True)
+
+        tip = label(page, "角色包放在 characters/ 里，一个文件夹就是一只；"
+                          "放进新的重启后在列表里就能看到。",
+                    font=F["mono_s"], fg=C["dim"], wraplength=620, justify="left")
+        tip.pack(anchor="w", padx=28, pady=(12, 12))
+
+        self._refresh_characters()
+
+    def _refresh_characters(self):
+        """Rebuild the list. Called on page show so a newly dropped-in pack appears."""
+        lst = getattr(self, "_char_list", None)
+        if lst is None:
+            return
+        for w in lst.winfo_children():
+            w.destroy()
+
+        try:
+            import characters
+            items = characters.list_characters()
+        except Exception:
+            items = []
+        current = config.load().get("character", "") or characters.default_id()
+
+        for i, spec in enumerate(items):
+            row = tk.Frame(lst, bg=C["card"])
+            row.pack(fill="x")
+            row.columnconfigure(1, weight=1)
+
+            active = (spec["id"] == current)
+            mark = "●" if active else "○"
+            label(row, mark, font=("Segoe UI Symbol", 11),
+                  fg=C["acc"] if active else C["dim"], bg=C["card"]).grid(
+                row=0, column=0, padx=(12, 10), pady=11)
+
+            name = label(row, spec["name"], font=F["sec"], fg=C["txt"], bg=C["card"])
+            name.grid(row=0, column=1, sticky="w")
+
+            # Frame count doubles as a "is this pack actually complete" signal.
+            n = self._count_frames(spec)
+            detail = "%d 帧" % n if n else "素材未就位"
+            label(row, detail, font=F["small"],
+                  fg=C["sub"] if n else C["warn"], bg=C["card"]).grid(
+                row=0, column=2, sticky="w", padx=(10, 0))
+
+            if active:
+                label(row, "使用中", font=F["small"], fg=C["acc"], bg=C["card"]).grid(
+                    row=0, column=3, padx=(12, 16))
+            else:
+                btn = Pill(row, "切换", kind="ghost", h=28, font=F["small"])
+                btn.grid(row=0, column=3, padx=(12, 16))
+                btn.configure(cursor="hand2")
+                btn.bind("<Button-1>", lambda _e, sid=spec["id"]: self._switch_character(sid))
+
+            if i < len(items) - 1:
+                tk.Frame(lst, bg=C["line"], height=1).pack(fill="x", padx=12)
+
+        if hasattr(self, "_char_hint"):
+            self._char_hint.configure(
+                text="共 %d 个角色 · 当前：%s" % (len(items), self._current_name(items, current)))
+
+    @staticmethod
+    def _count_frames(spec):
+        """How many frames a pack actually has on disk (0 when it is not built yet)."""
+        try:
+            import json
+            from pathlib import Path
+            stand = spec.get("stand")
+            if not stand:
+                return 0
+            fj = Path(stand) / "frames.json"
+            if not fj.exists():
+                return 0
+            data = json.loads(fj.read_text(encoding="utf-8"))
+            total = 0
+            for sdef in data.get("states", {}).values():
+                for fr in sdef.get("frames", []):
+                    if (Path(stand) / fr["file"]).exists():
+                        total += 1
+            return total
+        except Exception:
+            return 0
+
+    @staticmethod
+    def _current_name(items, current):
+        for spec in items:
+            if spec["id"] == current:
+                return spec["name"]
+        return current
+
+    def _switch_character(self, character_id):
+        """Persist the choice. Applied on restart — swapping sprite sets live would mean
+        reloading every frame and rebuilding the pet window mid-session."""
+        try:
+            cfg = config.load()
+            cfg["character"] = character_id
+            config.save(cfg)
+            import characters
+            name = characters.get(character_id)["name"]
+            self._char_hint.configure(text="已切换到「%s」，重启程序后生效" % name,
+                                      fg=C["acc"])
+            self._refresh_characters()
+        except Exception:
+            pass
 
     # ---------- Chat page ----------
     def _build_chat(self, page):

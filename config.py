@@ -29,6 +29,8 @@ DEFAULTS = {
     "check_updates": True,
     # Tag the user has already been told about, so the same release is announced only once.
     "update_dismissed": "",
+    # Which character pack to show (characters.py). Empty -> built-in default.
+    "character": "",
 }
 
 
