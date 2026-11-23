@@ -14,8 +14,9 @@ import ui
 from ui import C, F, Card, Pill, ThemeDots, label, rrect
 
 NAV = (("home", "主页", "◈"), ("chat", "聊天", "✧"),
-       ("characters", "角色", "☰"), ("settings", "设置", "⚙"))
-VERSION = "v0.6.20"
+       ("characters", "角色", "☰"), ("announce", "公告", "✉"),
+       ("settings", "设置", "⚙"))
+VERSION = "v0.6.21"
 
 
 def _force_foreground(hwnd):
@@ -435,7 +436,8 @@ class MainApp:
         container.pack(fill="both", expand=True)
         self.container = container
         builders = {"home": self._build_home, "chat": self._build_chat,
-                    "characters": self._build_characters, "settings": self._build_settings}
+                    "characters": self._build_characters, "announce": self._build_announce,
+                    "settings": self._build_settings}
         for key, build in builders.items():
             page = tk.Frame(container, bg=C["bg"])
             page.place(x=0, y=0, relwidth=1, relheight=1)
@@ -451,6 +453,7 @@ class MainApp:
         titles = {"home": ("主页", "银狼已经挂在你屏幕上了，随时待命"),
                   "chat": ("聊天", "说的话会同时出现在她头顶的气泡里"),
                   "characters": ("角色", "已经加入的角色都在这，点一下就能换"),
+                  "announce": ("公告", "每次更新都改了什么，这里说得清清楚楚"),
                   "settings": ("设置", "接一个 OpenAI 兼容接口，她就有脑子了")}
         t, s = titles[key]
         self.page_title.configure(text=t)
@@ -461,6 +464,8 @@ class MainApp:
             self.chat_entry.focus_set()
         if key == "characters":
             self._refresh_characters()
+        if key == "announce":
+            self._refresh_announce()
         if self._ready:
             self._fit_window(key)
             self.root.after(40, self._reflow)
@@ -658,6 +663,135 @@ class MainApp:
             self._refresh_characters()
         except Exception:
             pass
+
+    # ---------- Announcements ----------
+    def _build_announce(self, page):
+        """Show the version notes.
+
+        The text comes from 公告.md, which the project owner writes; this page only displays
+        it. The newest entry is expanded, older ones are collapsed into one-line rows that
+        can be clicked open, so the history stays reachable.
+        """
+        self._ann_list = tk.Frame(page, bg=C["bg"])
+        self._ann_list.pack(fill="both", expand=True, padx=24, pady=(16, 0))
+
+        self._ann_hint = label(page, "", font=F["mono_s"], fg=C["dim"])
+        self._ann_hint.pack(anchor="w", padx=28, pady=(10, 0))
+
+        tip = label(page, "公告写在程序目录的「公告.md」里，改完重启就能看到。",
+                    font=F["mono_s"], fg=C["dim"], wraplength=620, justify="left")
+        tip.pack(anchor="w", padx=28, pady=(12, 12))
+
+        self._refresh_announce()
+
+    def _refresh_announce(self):
+        """Rebuild the announcement list from the file."""
+        holder = getattr(self, "_ann_list", None)
+        if holder is None:
+            return
+        for w in holder.winfo_children():
+            w.destroy()
+
+        try:
+            import announce
+        except Exception as e:
+            label(holder, "公告模块加载失败：%s" % e, font=F["small"],
+                  fg=C["warn"], bg=C["bg"], wraplength=600,
+                  justify="left").pack(anchor="w")
+            return
+
+        data = announce.load()
+        entries = data.get("entries") or []
+        err = data.get("error")
+
+        if err:
+            label(holder, err, font=F["small"], fg=C["warn"], bg=C["bg"],
+                  wraplength=600, justify="left").pack(anchor="w")
+            return
+
+        if not entries:
+            label(holder, "还没有公告内容。", font=F["small"], fg=C["dim"],
+                  bg=C["bg"]).pack(anchor="w")
+            return
+
+        for idx, e in enumerate(entries):
+            self._ann_row(holder, e, expanded=(idx == 0))
+            if idx < len(entries) - 1:
+                tk.Frame(holder, bg=C["line"], height=1).pack(fill="x", padx=12, pady=2)
+
+        cur = announce.current(VERSION)
+        if getattr(self, "_ann_hint", None) is not None:
+            if cur.get("lines"):
+                self._ann_hint.configure(text="当前版本 %s 的公告" % VERSION)
+            else:
+                self._ann_hint.configure(text="当前版本 %s 还没有写公告" % VERSION)
+
+    def _ann_row(self, holder, entry, expanded=False):
+        """One version entry. Expanded shows the full notes; collapsed is a clickable header."""
+        card = Card(holder, radius=14, pad=6, stretch=True)
+        card.pack(fill="x")
+        body = card.body
+
+        head = tk.Frame(body, bg=C["card"])
+        head.pack(fill="x")
+
+        ver = entry.get("version", "")
+        date = entry.get("date", "")
+        title = ver + ("  " + date if date else "")
+        t = label(head, title, font=F["sec"], fg=C["acc"], bg=C["card"])
+        t.pack(side="left", padx=(12, 10))
+
+        if entry.get("is_current"):
+            label(head, "当前版本", font=F["small"], fg=C["mint"], bg=C["card"]).pack(
+                side="left", padx=(0, 8))
+
+        count = len(entry.get("lines") or [])
+        if count and not expanded:
+            label(head, "%d 条" % count, font=F["small"], fg=C["dim"], bg=C["card"]).pack(
+                side="left", padx=(0, 8))
+
+        arrow = label(head, "▾" if expanded else "▸", font=F["body"], fg=C["dim"], bg=C["card"])
+        arrow.pack(side="right", padx=(6, 14))
+
+        lines_box = tk.Frame(body, bg=C["card"])
+
+        def fill():
+            """(Re)build the note lines. Group headings like 【素材】 stand out."""
+            for w in lines_box.winfo_children():
+                w.destroy()
+            for item in entry.get("lines") or []:
+                if item.get("heading"):
+                    label(lines_box, item["text"], font=F["sec"], fg=C["txt"],
+                          bg=C["card"], anchor="w").pack(fill="x", pady=(6, 2))
+                else:
+                    label(lines_box, "· " + item["text"], font=F["small"], fg=C["sub"],
+                          bg=C["card"], wraplength=700, justify="left",
+                          anchor="w").pack(fill="x", pady=1)
+
+        if expanded:
+            lines_box.pack(fill="x", padx=(12, 12), pady=(6, 10))
+            fill()
+
+        # Clicking the header toggles the body.
+        state = {"open": expanded}
+
+        def toggle(_e=None):
+            state["open"] = not state["open"]
+            if state["open"]:
+                lines_box.pack(fill="x", padx=(12, 12), pady=(6, 10))
+                fill()
+            else:
+                lines_box.pack_forget()
+            arrow.configure(text="▾" if state["open"] else "▸")
+
+        # Keep a reference on the widget: the closure otherwise cannot be reached from
+        # outside, which makes the toggle impossible to test or to drive programmatically.
+        t._ann_toggle = toggle
+
+        if count:
+            for w in (head, t, arrow):
+                w.bind("<Button-1>", toggle)
+                w.configure(cursor="hand2")
 
     # ---------- Chat page ----------
     def _build_chat(self, page):

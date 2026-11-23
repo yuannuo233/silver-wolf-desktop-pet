@@ -666,6 +666,27 @@ class SilverWolfPet:
             if self.anim_state in ("typing", "console"):
                 self.set_anim_state("idle")
 
+    def _show_follow_explain(self):
+        """Explain what the activity detection does, in the user's language.
+
+        A global keyboard hook is a legitimate thing for a desktop pet to install, but it is
+        also the kind of thing people worry about. Being upfront about the boundary
+        (timestamp only, never content) is cheaper than defending it later.
+        """
+        text = (
+            "「跟着我做事」是怎么判断的：\n\n"
+            "· 程序里装了一个很轻量的键盘监听器\n"
+            "· 它只记下「你最后一次按键盘是什么时候」\n"
+            "· 不记录你按了哪个键，也不记录你打的字\n"
+            "· 你在打字，她就装作在敲键盘；你在玩游戏，她就掏掌机\n\n"
+            "· 关掉这个功能后，键盘监听器不会再工作\n"
+            "· 如果不放心，也可以直接在这里关掉：右键银狼 → 跟着我做事"
+        )
+        try:
+            self.show_bubble(text.replace("\n", "  "), 14000)
+        except Exception:
+            pass
+
     # ---------- mouse events ----------
 
     def _bind_events(self):
@@ -955,6 +976,13 @@ class SilverWolfPet:
         self.menu.add_checkbutton(
             label="跟着我做事（打字/打游戏）", variable=self._follow_var,
             command=self._toggle_follow,
+        )
+        # Say plainly what the hook does, because a global keyboard hook is the kind of thing
+        # that makes security software (and the user) nervous. It records only the timestamp
+        # of the last key press — never the key itself, never the text.
+        self.menu.add_command(
+            label="关于「跟着我做事」（只记录按键时间，不记录内容）",
+            command=self._show_follow_explain,
         )
         self.menu.add_command(label="设置…", command=self.open_settings)
         size_menu = tk.Menu(self.menu, tearoff=0)
