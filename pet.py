@@ -53,6 +53,10 @@ MAX_STEP_S = 0.25
 # Floor for the next animation tick. Never schedule 0ms (Tk would busy-loop and starve the
 # rest of the event queue, which shows up as frozen input).
 MIN_TICK_MS = 4
+# A mid-run direction flip needs at least this much movement behind it. Without it a 1~2px
+# cursor tremor flips the sprite, and each flip shows one frame facing the wrong way — which
+# the eye catches as "she ran backwards for a moment".
+FLIP_MIN_PX = 6.0
 # Animation time scale. The run cycle is authored at 42ms/frame (18 frames = 756ms), which is
 # 21fps — the eye reads that as a slideshow, and at 320px/s every frame also jumps her forward
 # by 60px, so the motion arrives in visible hops. Running the same 18 frames faster keeps the
@@ -397,7 +401,15 @@ class SilverWolfPet:
                 # real mouse movement starts the chase (and its turn) again.
                 self.set_anim_state("idle")
             return
-        self.win.geometry(f"+{round(x + dx / dist * step)}+{round(y + dy / dist * step)}")
+        # Move first, then derive the facing from the movement that actually happened.
+        # Sampling the facing from (target - x) BEFORE moving is off by one frame: on the
+        # first frame after a reversal the old direction is still stored, so she takes one
+        # step left while the left-facing pose has not been applied yet.
+        old_x = x
+        new_x = round(x + dx / dist * step)
+        new_y = round(y + dy / dist * step)
+        self.win.geometry(f"+{new_x}+{new_y}")
+        self._face_travel(new_x - old_x, new_y - y)
 
     def _start_goto(self, x, y):
         if not self.anim:                 # no-Pillow fallback: snap straight to the point.
@@ -410,19 +422,15 @@ class SilverWolfPet:
         if self._goto_job is None:
             self._goto_t = time.monotonic()
             self._goto_job = True     # marker only; the animation loop does the stepping
-        # Only pick a facing / start a run when there is nothing playing yet AND the cursor has
-        # actually moved away. Doing this on every motion event restarts the sequence
-        # (anim_idx = 0) dozens of times a second, so the turn can never play past its first
-        # frame and she just treads in place beside the cursor.
+        # Facing is decided by _move_step from the real direction of travel every frame — see
+        # _face_travel. Doing it here (once, from the target) is what let her keep the first
+        # direction for the whole drag and end up running backwards.
         if self.anim_state in ("idle", "typing", "console"):
             dx = x - self.win.winfo_x()
             dy = y - self.win.winfo_y()
             if math.hypot(dx, dy) < GOTO_MIN_DIST:
                 return                # already at the cursor; nothing to chase
-            if abs(dx) >= abs(dy) * 0.6:  # mostly horizontal -> show the side run
-                self._start_run("run_right" if dx >= 0 else "run_left")
-            elif "run_right" in self.anim:
-                self._start_run("run_right")   # vertical moves still need a moving body
+            self._face_travel(dx, dy)
 
     def _cancel_goto(self):
         self._goto_target = None
@@ -444,6 +452,44 @@ class SilverWolfPet:
         """Announce a state change to a connected host (PROTOCOL.md, outbox)."""
         if self.interop is not None:
             self.interop.send({"t": "state", "value": state})
+
+    def _face_travel(self, dx, dy):
+        """Turn her to face the direction she is actually travelling.
+
+        This is what keeps the sprite honest while the cursor circles: the facing has to be
+        derived from the movement, not from where the target happens to be. Deciding it once
+        in _start_goto and never again means she keeps the first direction for the whole
+        drag — run leftwards across the screen while the artwork still faces right, which
+        reads as "running backwards".
+
+        Two cases, and the difference matters:
+          · from a standing pose -> play the full turn transition (the front-to-side pivot
+            that makes her read as a character);
+          · already running -> flip the cycle instantly. A pivot mid-chase would keep moving
+            for its whole duration under the old pose, which is the backwards step.
+        """
+        if abs(dx) < 1.0 and abs(dy) < 1.0:
+            return                                  # effectively stationary
+        if abs(dx) >= abs(dy) * 0.6:                # mostly horizontal: side view
+            state = "run_right" if dx > 0 else "run_left"
+        else:
+            state = "run_right" if dy > 0 else "run_left"
+        if self.anim_state == state:
+            return
+        # Hysteresis: a reversal needs a real step behind it. Without this the sprite flips on
+        # a 1~2px tremor while the cursor hovers, and each flip shows one frame facing the
+        # wrong way — which the eye catches as "she ran backwards for a moment".
+        if self.anim_state in ("run_left", "run_right"):
+            if math.hypot(dx, dy) < FLIP_MIN_PX:
+                return
+            # Mid-run reversal: swap the cycle immediately, no pivot.
+            self._turning = False
+            self._pending_run = None
+            self.set_anim_state(state)
+        else:
+            # Standing: show the turn. Forward motion pauses until it finishes (_move_step
+            # returns early while self._turning), so the pivot is actually visible.
+            self._start_run(state)
 
     def _start_run(self, state):
         """Face the direction of travel, playing the full turn transition, then run.
@@ -504,6 +550,17 @@ class SilverWolfPet:
                 self.anim_state = self._pending_run
                 self._pending_run = None
                 self._turning = False
+                # The cursor may have moved while the pivot played, so re-derive the facing
+                # from the live target instead of trusting the direction chosen before the
+                # turn. Skipping this leaves one run frame facing the old way: the last
+                # visible "backwards" step when circling the mouse.
+                if self._goto_target is not None:
+                    tdx = self._goto_target[0] - self.win.winfo_x()
+                    tdy = self._goto_target[1] - self.win.winfo_y()
+                    if abs(tdx) >= abs(tdy) * 0.6:
+                        self.anim_state = "run_right" if tdx > 0 else "run_left"
+                    else:
+                        self.anim_state = "run_right" if tdy > 0 else "run_left"
             else:
                 self.anim_state = "idle"
                 self._action_live = False
