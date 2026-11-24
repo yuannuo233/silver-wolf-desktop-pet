@@ -211,6 +211,7 @@ class SilverWolfPet:
         self._last_drag_x = None
         self._dir_acc = 0            # accumulated drag direction, prevents left/right jitter.
         self._cur_photo = None       # the image on screen; skip the redraw when unchanged.
+        self._anim_gen = 0           # bumped on character swap; stale ticks retire themselves
         self.anim_once = set()       # states that play once then return to idle (actions, turns).
         self._pending_run = None     # direction to run after the turn transition finishes.
         self._turning = False        # playing a turn transition; do not interrupt it with a run.
@@ -297,6 +298,56 @@ class SilverWolfPet:
             self.canvas.coords(self.sprite, self.width // 2, self.canvas_h // 2)
             x, y = self.win.winfo_x(), self.win.winfo_y()
             self.win.geometry(f"{self.width}x{self.canvas_h}+{x}+{y}")
+
+    def reload_character(self, character_id: str):
+        """Swap the sprite set at runtime.
+
+        Switching used to require a restart, which read as "the button does nothing":
+        the config was saved but the window kept the old frames. Reloading the animation
+        in place is cheap (the frames are small PNGs) and makes the switch instant.
+
+        An animation tick may already be queued. Instead of trying to cancel it, bump a
+        generation counter: the stale tick sees a different generation and stops itself,
+        so two tick chains can never run at once and double the speed.
+        """
+        import characters
+        spec = characters.get(character_id)
+        if not spec:
+            return False
+        self.character = spec
+        self.char_name = spec.get("name") or "银狼"
+        stand = spec.get("stand")
+        self._stand_dir = Path(stand) if stand else None
+        cfg = config.load()
+        cfg["character"] = character_id
+        config.save(cfg)
+        self.settings = config.load()
+        # Retire the running tick chain.
+        self._anim_gen = getattr(self, "_anim_gen", 0) + 1
+        self.anim = None
+        self.anim_state = "idle"
+        self.anim_idx = 0
+        self.anim_once = set()
+        self._cur_photo = None
+        self._pending_run = None
+        self._turning = False
+        self._load_anim()
+        if self.anim is None:
+            return False
+        self.width, self.canvas_h = self.anim_size
+        self.canvas.configure(width=self.width, height=self.canvas_h)
+        seq = self.anim.get("idle") or next(iter(self.anim.values()))
+        if self.sprite is None:
+            self.sprite = self.canvas.create_image(
+                self.width // 2, self.canvas_h // 2, image=seq[0][0])
+        else:
+            self.canvas.itemconfigure(self.sprite, image=seq[0][0])
+            self.canvas.coords(self.sprite, self.width // 2, self.canvas_h // 2)
+        self._cur_photo = seq[0][0]
+        x, y = self.win.winfo_x(), self.win.winfo_y()
+        self.win.geometry(f"{self.width}x{self.canvas_h}+{x}+{y}")
+        self._schedule_next(seq[0][1])
+        return True
 
     def set_size(self, target_height: int):
         self.settings["size_height"] = target_height
@@ -548,7 +599,11 @@ class SilverWolfPet:
         else:
             self._bob()
 
-    def _tick_anim(self):
+    def _tick_anim(self, gen=None):
+        if not self.anim:
+            return
+        if gen is not None and gen != getattr(self, "_anim_gen", 0):
+            return                     # this chain belongs to a character that is gone
         seq = self.anim[self.anim_state]
         photo, ms = seq[self.anim_idx]
         if photo is not self._cur_photo:      # skip the redraw when the frame is unchanged.
@@ -597,8 +652,9 @@ class SilverWolfPet:
         what the eye reads as smooth.
         """
         delay = max(MIN_TICK_MS, int(frame_ms))
+        gen = getattr(self, "_anim_gen", 0)
         try:
-            self.win.after(delay, self._tick_anim)
+            self.win.after(delay, lambda: self._tick_anim(gen))
         except tk.TclError:
             pass                      # window destroyed
 

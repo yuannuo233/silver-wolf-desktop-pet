@@ -16,7 +16,7 @@ from ui import C, F, Card, Pill, ThemeDots, label, rrect
 NAV = (("home", "主页", "◈"), ("chat", "聊天", "✧"),
        ("characters", "角色", "☰"), ("announce", "公告", "✉"),
        ("plugins", "插件", "⊞"), ("settings", "设置", "⚙"))
-VERSION = "v0.6.29"
+VERSION = "v0.6.30"
 
 
 def _force_foreground(hwnd):
@@ -963,16 +963,28 @@ class MainApp:
         return current
 
     def _switch_character(self, character_id):
-        """Persist the choice. Applied on restart — swapping sprite sets live would mean
-        reloading every frame and rebuilding the pet window mid-session."""
+        """Persist the choice and swap the sprite set immediately.
+
+        It used to only save to config and tell the user to restart, which made the button
+        look broken: the list still showed the old character and the pet kept its old face.
+        """
         try:
             cfg = config.load()
             cfg["character"] = character_id
             config.save(cfg)
             import characters
             name = characters.get(character_id)["name"]
-            self._char_hint.configure(text="已切换到「%s」，重启程序后生效" % name,
-                                      fg=C["acc"])
+            swapped = False
+            if self.pet is not None:
+                try:
+                    swapped = self.pet.reload_character(character_id)
+                except Exception:
+                    swapped = False
+            if swapped:
+                self._char_hint.configure(text="已切换到「%s」" % name, fg=C["mint"])
+            else:
+                self._char_hint.configure(
+                    text="已选中「%s」，重启程序后生效" % name, fg=C["acc"])
             self._refresh_characters()
         except Exception:
             pass
