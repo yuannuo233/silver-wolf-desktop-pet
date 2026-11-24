@@ -31,6 +31,8 @@ DEFAULTS = {
     "update_dismissed": "",
     # Which character pack to show (characters.py). Empty -> built-in default.
     "character": "",
+    # Enabled plugin ids (plugins/ folder). Empty -> none enabled.
+    "plugins_enabled": [],
 }
 
 

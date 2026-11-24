@@ -1,0 +1,9 @@
+{
+  "id": "clock",
+  "name": "报时",
+  "version": "1.0.0",
+  "author": "银狼官方示例",
+  "description": "告诉她现在几点。零依赖，用来演示插件怎么写。",
+  "entry": "main.py",
+  "intents": ["clock", "time"]
+}

@@ -15,8 +15,8 @@ from ui import C, F, Card, Pill, ThemeDots, label, rrect
 
 NAV = (("home", "主页", "◈"), ("chat", "聊天", "✧"),
        ("characters", "角色", "☰"), ("announce", "公告", "✉"),
-       ("settings", "设置", "⚙"))
-VERSION = "v0.6.23"
+       ("plugins", "插件", "⊞"), ("settings", "设置", "⚙"))
+VERSION = "v0.6.24"
 
 
 def _force_foreground(hwnd):
@@ -629,7 +629,7 @@ class MainApp:
         self.container = container
         builders = {"home": self._build_home, "chat": self._build_chat,
                     "characters": self._build_characters, "announce": self._build_announce,
-                    "settings": self._build_settings}
+                    "plugins": self._build_plugins, "settings": self._build_settings}
         for key, build in builders.items():
             # Every page sits inside a ScrollablePage: when the content does not fit the
             # window (short screen, large font scale), the user can scroll instead of
@@ -656,6 +656,7 @@ class MainApp:
                   "chat": ("聊天", "说的话会同时出现在她头顶的气泡里"),
                   "characters": ("角色", "已经加入的角色都在这，点一下就能换"),
                   "announce": ("公告", "每次更新都改了什么，这里说得清清楚楚"),
+                  "plugins": ("插件", "给她装点新本事，比如报时、天气"),
                   "settings": ("设置", "接一个 OpenAI 兼容接口，她就有脑子了")}
         t, s = titles[key]
         self.page_title.configure(text=t)
@@ -668,6 +669,8 @@ class MainApp:
             self._refresh_characters()
         if key == "announce":
             self._refresh_announce()
+        if key == "plugins":
+            self._refresh_plugins()
         if self._ready:
             self._fit_window(key)
             self.root.after(40, self._reflow)
@@ -863,6 +866,127 @@ class MainApp:
             self._char_hint.configure(text="已切换到「%s」，重启程序后生效" % name,
                                       fg=C["acc"])
             self._refresh_characters()
+        except Exception:
+            pass
+
+    # ---------- Plugins ----------
+    def _build_plugins(self, page):
+        """The plugin marketplace: list every plugin folder, let the user enable them."""
+        self._plugin_hint = label(page, "", font=F["mono_s"], fg=C["dim"])
+        self._plugin_hint.pack(anchor="w", padx=28, pady=(14, 0))
+
+        card = Card(page, radius=16, pad=6, stretch=True)
+        card.pack(fill="both", expand=True, padx=24, pady=(10, 0))
+        self._plugin_list = tk.Frame(card.body, bg=C["card"])
+        self._plugin_list.pack(fill="both", expand=True)
+
+        tip = label(
+            page,
+            "插件放在程序目录的「plugins\\」里，一个文件夹就是一个插件；"
+            "丢进去后回到这一页就能看到。\n"
+            "点头像旁的「试一下」可以让她立刻演示一句。",
+            font=F["mono_s"], fg=C["dim"], wraplength=640, justify="left")
+        tip.pack(anchor="w", padx=28, pady=(12, 12))
+
+        self._refresh_plugins()
+
+    def _refresh_plugins(self):
+        """Rebuild the plugin list from disk."""
+        holder = getattr(self, "_plugin_list", None)
+        if holder is None:
+            return
+        for w in holder.winfo_children():
+            w.destroy()
+
+        try:
+            import plugins_engine as PE
+            items = PE.list_plugins()
+        except Exception:
+            items = []
+        enabled = set(config.load().get("plugins_enabled", []))
+
+        for i, p in enumerate(items):
+            row = tk.Frame(holder, bg=C["card"])
+            row.pack(fill="x")
+            row.columnconfigure(1, weight=1)
+
+            pid = p.get("id", "")
+            on = pid in enabled and p.get("available")
+            mark = "●" if on else "○"
+            label(row, mark, font=("Segoe UI Symbol", 11),
+                  fg=C["acc"] if on else C["dim"], bg=C["card"]).grid(
+                row=0, column=0, padx=(12, 10), pady=11)
+
+            label(row, p.get("name", pid), font=F["sec"], fg=C["txt"],
+                  bg=C["card"]).grid(row=0, column=1, sticky="w")
+
+            ver = p.get("version", "")
+            who = p.get("author", "")
+            meta = "  ·  ".join(x for x in (ver, who) if x)
+            label(row, meta, font=F["small"], fg=C["dim"], bg=C["card"]).grid(
+                row=0, column=2, sticky="w", padx=(10, 0))
+
+            if not p.get("available"):
+                label(row, "入口缺失", font=F["small"], fg=C["warn"],
+                      bg=C["card"]).grid(row=0, column=3, padx=(12, 16))
+            else:
+                btn = Pill(row, "关闭" if on else "启用",
+                           lambda _sid=pid, _o=on: self._toggle_plugin(_sid, _o),
+                           kind="ghost", h=28, font=F["small"])
+                btn.grid(row=0, column=3, padx=(12, 16))
+                btn.configure(cursor="hand2")
+                # A quick demo: ask the plugin for its main intent and show the answer.
+                demo = Pill(row, "试一下", lambda _p=p: self._demo_plugin(_p),
+                            kind="ghost", h=28, font=F["small"])
+                demo.grid(row=0, column=4, padx=(0, 16))
+                demo.configure(cursor="hand2")
+
+            if i < len(items) - 1:
+                tk.Frame(holder, bg=C["line"], height=1).pack(fill="x", padx=12)
+
+        if hasattr(self, "_plugin_hint"):
+            self._plugin_hint.configure(text="共 %d 个插件 · 已启用 %d 个"
+                                        % (len(items), len(enabled)))
+
+    def _toggle_plugin(self, plugin_id, was_on):
+        """Persist the enabled list. Takes effect the next time the app starts."""
+        try:
+            cfg = config.load()
+            cur = list(cfg.get("plugins_enabled", []))
+            if was_on:
+                cur = [x for x in cur if x != plugin_id]
+                word = "关闭"
+            else:
+                if plugin_id not in cur:
+                    cur.append(plugin_id)
+                word = "启用"
+            cfg["plugins_enabled"] = cur
+            config.save(cfg)
+            self._refresh_plugins()
+            if getattr(self, "_plugin_hint", None) is not None:
+                self._plugin_hint.configure(
+                    text="已%s插件，重启程序后生效" % word, fg=C["acc"])
+        except Exception:
+            pass
+
+    def _demo_plugin(self, plugin):
+        """Run a plugin right now and show its answer in the pet's bubble.
+
+        Uses the first intent the plugin declares, with no arguments — enough to prove
+        the wiring works. The real chat integration passes whatever the user asked.
+        """
+        try:
+            import plugins_engine as PE
+            intents = plugin.get("intents") or []
+            if not intents:
+                return
+            result = PE.ask(plugin, intents[0], {})
+            text = result.get("text") or result.get("error") or "插件没有返回内容"
+            if self.pet is not None:
+                self.pet.show_bubble(text, 8000)
+            if getattr(self, "_plugin_hint", None) is not None:
+                self._plugin_hint.configure(text="试了一下「%s」" % plugin.get("name", ""),
+                                            fg=C["acc"])
         except Exception:
             pass
 

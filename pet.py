@@ -901,10 +901,55 @@ class SilverWolfPet:
         header.bind("<ButtonPress-1>", start_move)
         header.bind("<B1-Motion>", do_move)
 
+    # ---------- plugin dispatch ----------
+
+    def _try_plugin(self, text):
+        """If an enabled plugin can handle this message, run it and return its answer.
+
+        This is the smallest useful version of "the pet can use plugins": a keyword check
+        picks the plugin, then we ask it. No AI function-calling yet — that is a later step.
+        Returns the answer string, or None to let the normal AI chat handle it.
+        """
+        try:
+            import plugins_engine as PE
+            enabled = set(config.load().get("plugins_enabled", []))
+            if not enabled:
+                return None
+            rules = {
+                "clock": ("几点", "现在几点", "时间", "报时", "星期几"),
+                "weather": ("天气", "下雨", "气温", "多少度", "冷不冷", "热不热"),
+            }
+            for p in PE.list_plugins():
+                pid = p.get("id", "")
+                if pid not in enabled or not p.get("available"):
+                    continue
+                words = rules.get(pid, ())
+                if not any(w in text for w in words):
+                    continue
+                intents = p.get("intents") or []
+                if not intents:
+                    continue
+                result = PE.ask(p, intents[0], {"text": text})
+                if result.get("ok") and result.get("text"):
+                    return str(result["text"])
+                # Plugin failed -> let the user know, but do not silently fall through to AI
+                # (they would get a generic answer and never know the plugin broke).
+                return "插件「%s」没成功：%s" % (p.get("name", pid),
+                                              result.get("error", "未知原因"))
+        except Exception:
+            return None                     # plugin system itself broke -> normal chat
+        return None
+
     def send_chat_text(self, text):
         """Send one user message (from the quick card OR the main chat page)."""
         text = (text or "").strip()
         if not text:
+            return
+        # Plugins first: this is what makes them actually useful in conversation.
+        plugin_answer = self._try_plugin(text)
+        if plugin_answer is not None:
+            self._emit("user", text)
+            self._finish_turn(plugin_answer)
             return
         cfg = config.load()
         if not cfg["base_url"] or not cfg["model"]:

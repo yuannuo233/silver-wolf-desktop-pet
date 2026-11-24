@@ -1,0 +1,9 @@
+{
+  "id": "weather",
+  "name": "天气",
+  "version": "1.0.0",
+  "author": "你的朋友",
+  "description": "播报今天的天气。用和风天气（国内服务，免费、邮箱注册）。",
+  "entry": "main.py",
+  "intents": ["weather"]
+}
