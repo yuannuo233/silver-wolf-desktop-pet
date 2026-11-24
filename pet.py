@@ -359,8 +359,52 @@ class SilverWolfPet:
             self.anim = states or None
             self.anim_once = once
             self.anim_size = target
+            # A character pack may only cover some states (the cold variant ships idle +
+            # turn + run). Borrow the missing ones from the built-in look so running,
+            # turning and the right-click actions keep working instead of silently doing
+            # nothing.
+            self._borrow_missing_states(states, once, stand, target)
         except Exception:
             self.anim = None   # missing assets or a broken file -> quietly fall back to single-frame.
+
+    def _borrow_missing_states(self, states, once, stand, target):
+        """Fill states this character pack does not provide from the built-in look.
+
+        The cold variant only ships idle + turn + run so far. Borrowing the remaining
+        actions from the default set keeps every right-click action working instead of
+        silently doing nothing.
+        """
+        base = Path(__file__).resolve().parent / "assets" / "stand"
+        if not base.exists():
+            return
+        try:
+            if base.resolve() == Path(stand).resolve():
+                return                  # already the built-in look; nothing to borrow
+            spec = json.loads((base / "frames.json").read_text(encoding="utf-8"))
+        except Exception:
+            return
+        for state, sdef in spec["states"].items():
+            if state in states:
+                continue                # this expression has its own version
+            seq = []
+            for fr in sdef["frames"]:
+                try:
+                    img = Image.open(base / fr["file"]).convert("RGBA")
+                except Exception:
+                    continue
+                if img.size != target:
+                    img = img.resize(target, Image.LANCZOS)
+                img.putalpha(img.getchannel("A").point(lambda a: 255 if a >= 128 else 0))
+                buf = io.BytesIO()
+                img.save(buf, "PNG")
+                ms = fr["duration_ms"]
+                if state in ("run_right", "run_left", "turn_right", "turn_left"):
+                    ms = max(MIN_TICK_MS, int(ms * ANIM_SPEEDUP))
+                seq.append((tk.PhotoImage(data=base64.b64encode(buf.getvalue())), ms))
+            if seq:
+                states[state] = seq
+                if not sdef.get("loop", True):
+                    once.add(state)
 
     # ---------- Chasing the cursor / running to the drop point ----------
     #

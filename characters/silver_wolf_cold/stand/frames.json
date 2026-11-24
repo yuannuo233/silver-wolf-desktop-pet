@@ -1,0 +1,381 @@
+{
+  "sprite": {
+    "canvas_width": 190,
+    "canvas_height": 216,
+    "baseline_y": 210,
+    "center_x": 95,
+    "character_height": 202,
+    "note": "冷淡表情（死鱼眼）。idle 来自 WB 站立视频；turn/run 来自 H3 转身跑视频（帧35~44 转身、帧45起 跑步）。白底 flood-fill 抠图、190x216 标准化、脚底对齐 210。"
+  },
+  "states": {
+    "idle": {
+      "loop": true,
+      "frames": [
+        {
+          "file": "idle_01.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_02.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_03.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_04.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_05.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_06.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_07.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_08.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_09.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_10.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_11.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_12.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_13.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_14.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_15.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_16.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_17.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_18.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_19.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_20.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_21.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_22.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_23.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_24.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_25.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_26.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_27.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_28.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_29.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_30.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_31.png",
+          "duration_ms": 100
+        },
+        {
+          "file": "idle_32.png",
+          "duration_ms": 100
+        }
+      ]
+    },
+    "turn_right": {
+      "loop": false,
+      "frames": [
+        {
+          "file": "turn_right_01.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_right_02.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_right_03.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_right_04.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_right_05.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_right_06.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_right_07.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_right_08.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_right_09.png",
+          "duration_ms": 70
+        }
+      ]
+    },
+    "run_right": {
+      "loop": true,
+      "frames": [
+        {
+          "file": "run_right_01.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_02.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_03.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_04.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_05.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_06.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_07.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_08.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_09.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_10.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_11.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_12.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_13.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_14.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_15.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_16.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_17.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_right_18.png",
+          "duration_ms": 42
+        }
+      ]
+    },
+    "turn_left": {
+      "loop": false,
+      "frames": [
+        {
+          "file": "turn_left_01.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_left_02.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_left_03.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_left_04.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_left_05.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_left_06.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_left_07.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_left_08.png",
+          "duration_ms": 70
+        },
+        {
+          "file": "turn_left_09.png",
+          "duration_ms": 70
+        }
+      ]
+    },
+    "run_left": {
+      "loop": true,
+      "frames": [
+        {
+          "file": "run_left_01.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_02.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_03.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_04.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_05.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_06.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_07.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_08.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_09.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_10.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_11.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_12.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_13.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_14.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_15.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_16.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_17.png",
+          "duration_ms": 42
+        },
+        {
+          "file": "run_left_18.png",
+          "duration_ms": 42
+        }
+      ]
+    }
+  }
+}

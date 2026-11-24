@@ -16,7 +16,7 @@ from ui import C, F, Card, Pill, ThemeDots, label, rrect
 NAV = (("home", "主页", "◈"), ("chat", "聊天", "✧"),
        ("characters", "角色", "☰"), ("announce", "公告", "✉"),
        ("plugins", "插件", "⊞"), ("settings", "设置", "⚙"))
-VERSION = "v0.6.25"
+VERSION = "v0.6.26"
 
 
 def _force_foreground(hwnd):
@@ -867,8 +867,10 @@ class MainApp:
         self._char_hint = label(page, "", font=F["mono_s"], fg=C["dim"])
         self._char_hint.pack(anchor="w", padx=28, pady=(14, 0))
 
-        card = Card(page, radius=16, pad=6, stretch=True)
-        card.pack(fill="both", expand=True, padx=24, pady=(10, 0))
+        # Not stretch=True: the list lives inside the scroll area, whose container has no
+        # height of its own. A stretch card asks for that height, gets 1px and collapses.
+        card = Card(page, radius=16, pad=6)
+        card.pack(fill="x", padx=24, pady=(10, 0))
         self._char_list = tk.Frame(card.body, bg=C["card"])
         self._char_list.pack(fill="both", expand=True)
 
@@ -981,8 +983,9 @@ class MainApp:
         self._plugin_hint = label(page, "", font=F["mono_s"], fg=C["dim"])
         self._plugin_hint.pack(anchor="w", padx=28, pady=(14, 0))
 
-        card = Card(page, radius=16, pad=6, stretch=True)
-        card.pack(fill="both", expand=True, padx=24, pady=(10, 0))
+        # Same reason as the character list: inside the scroll area a stretch card collapses.
+        card = Card(page, radius=16, pad=6)
+        card.pack(fill="x", padx=24, pady=(10, 0))
         self._plugin_list = tk.Frame(card.body, bg=C["card"])
         self._plugin_list.pack(fill="both", expand=True)
 
@@ -1160,7 +1163,10 @@ class MainApp:
 
     def _ann_row(self, holder, entry, expanded=False):
         """One version entry. Expanded shows the full notes; collapsed is a clickable header."""
-        card = Card(holder, radius=14, pad=6, stretch=True)
+        # Not stretch=True: these cards live inside the scroll area, where the container has
+        # no height of its own. A stretch card asks the parent for its height, gets 1px, and
+        # collapses to nothing — which is exactly why the announcement page looked blank.
+        card = Card(holder, radius=14, pad=6)
         card.pack(fill="x")
         body = card.body
 
@@ -1227,8 +1233,11 @@ class MainApp:
 
     # ---------- Chat page ----------
     def _build_chat(self, page):
-        log_card = Card(page, radius=16, pad=0, stretch=True)
-        log_card.pack(fill="both", expand=True, padx=28, pady=(20, 0))
+        # Inside the scroll area a stretch card has no height to stretch into, so give the
+        # chat log a real height instead.
+        log_card = Card(page, radius=16, pad=0)
+        log_card.pack(fill="x", padx=28, pady=(20, 0))
+        log_card.configure(height=360)
         inner = tk.Frame(log_card.body, bg=C["card"])
         inner.pack(fill="both", expand=True, pady=14, padx=16)
 
