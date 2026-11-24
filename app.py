@@ -16,7 +16,7 @@ from ui import C, F, Card, Pill, ThemeDots, label, rrect
 NAV = (("home", "主页", "◈"), ("chat", "聊天", "✧"),
        ("characters", "角色", "☰"), ("announce", "公告", "✉"),
        ("plugins", "插件", "⊞"), ("settings", "设置", "⚙"))
-VERSION = "v0.6.24"
+VERSION = "v0.6.25"
 
 
 def _force_foreground(hwnd):
@@ -267,6 +267,8 @@ class ScrollablePage(tk.Frame):
             self._bar_shown = False
             self.after_idle(self._sync_width)
         self.vbar.set(first, last)
+        # Keep the right edge strip in sync with this page's scrollbar.
+        self.after_idle(lambda: self.app._sync_edge_strips())
 
     def _on_body_configure(self, _e=None):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -366,6 +368,68 @@ class ResizeGrip(tk.Frame):
         # The grip sits on top of the content, so the page has to be told to re-measure.
         self.app.refresh_cards()
         self.app.root.update_idletasks()
+        self.app._sync_edge_strips()
+
+    def _on_release(self, _event):
+        self._start = None
+        self.app.refresh_cards()
+        self.app.root.after(60, self.app._reflow)
+
+
+class EdgeResizer(tk.Frame):
+    """Invisible strip on a window edge that resizes when dragged.
+
+    The window is overrideredirect, so the native resize border is gone. Users instinctively
+    drag the *edge* of a window (that is how every normal window works), not a tiny corner
+    mark. The corner ResizeGrip alone was too easy to miss. These strips restore the
+    familiar "grab an edge and pull" behaviour.
+
+    Three sides: left / right / bottom. The top is the self-drawn title bar, which is already
+    used for moving the window, so it is deliberately left alone.
+    """
+
+    EDGE = 6                  # hit area thickness in px
+
+    def __init__(self, parent, app, side):
+        cursor = {
+            "left": "sb_h_double_arrow",
+            "right": "sb_h_double_arrow",
+            "bottom": "sb_v_double_arrow",
+        }[side]
+        super().__init__(parent, bg=C["bg"], cursor=cursor)
+        self.app = app
+        self.side = side
+        self._start = None
+        self.bind("<ButtonPress-1>", self._on_press)
+        self.bind("<B1-Motion>", self._on_drag)
+        self.bind("<ButtonRelease-1>", self._on_release)
+
+    def _on_press(self, event):
+        root = self.app.root
+        self.app._user_sized = True
+        self._start = (event.x_root, event.y_root,
+                       root.winfo_x(), root.winfo_y(),
+                       root.winfo_width(), root.winfo_height())
+
+    def _on_drag(self, event):
+        if self._start is None:
+            return
+        mx, my, x0, y0, w0, h0 = self._start
+        root = self.app.root
+        dx, dy = event.x_root - mx, event.y_root - my
+        x, y, w, h = x0, y0, w0, h0
+        if self.side == "right":
+            w = max(self.app.MIN_W, min(w0 + dx, root.winfo_screenwidth() - x0))
+        elif self.side == "left":
+            nw = max(self.app.MIN_W, min(w0 - dx, x0 + w0))
+            x = x0 + (w0 - nw)
+            w = nw
+        elif self.side == "bottom":
+            h = max(self.app.MIN_H, min(h0 + dy, root.winfo_screenheight() - y0))
+        root.geometry(f"{w}x{h}+{x}+{y}")
+        self.app.refresh_cards()
+        self.app.root.update_idletasks()
+        self.app._sync_edge_strips()
 
     def _on_release(self, _event):
         self._start = None
@@ -436,6 +500,24 @@ class MainApp:
         self.grip.place(relx=1.0, rely=1.0, anchor="se",
                         x=-2, y=-2)
 
+        # Invisible edge strips: let users grab the left/right/bottom edge to resize,
+        # the way every normal window behaves. The corner grip stays as a visual hint.
+        # Raised above content so the strip actually receives the mouse.
+        e = EdgeResizer.EDGE
+        self.edges = []
+        for side in ("left", "right", "bottom"):
+            strip = EdgeResizer(self.inner, self, side)
+            if side == "left":
+                strip.place(x=0, y=0, width=e, relheight=1.0)
+            elif side == "right":
+                strip.place(relx=1.0, x=-e, y=0, width=e, relheight=1.0)
+            else:
+                strip.place(x=0, rely=1.0, y=-e, relwidth=1.0, height=e)
+            strip.lift()
+            self.edges.append(strip)
+        # Keep the corner grip above the edge strips so it remains clickable.
+        self.grip.lift()
+
         # overrideredirect windows do not take keyboard focus on click; without this the inputs cannot type.
         root.bind("<Button-1>", self._wake_focus, add="+")
         root.bind("<FocusIn>", lambda _e: self._pet_on_top(False), add="+")
@@ -456,6 +538,7 @@ class MainApp:
         self.refresh_cards()
         self.root.update_idletasks()
         self._fit_window()
+        self.root.after_idle(self._sync_edge_strips)
 
     def _build_edge(self):
         """Re-colour the window outline after a theme switch.
@@ -674,6 +757,29 @@ class MainApp:
         if self._ready:
             self._fit_window(key)
             self.root.after(40, self._reflow)
+        self.root.after_idle(self._sync_edge_strips)
+
+    def _sync_edge_strips(self):
+        """Hide the right resize strip when the visible page has a scrollbar.
+
+        The strip sits in a top-level container and would swallow clicks meant for the
+        scrollbar underneath it. When a scrollbar is visible on the current page, that 6px
+        belongs to the scrollbar; otherwise the strip is restored for edge resizing.
+        """
+        try:
+            holder = self.pages.get(self.current_page)
+            has_bar = bool(holder and holder.vbar.winfo_ismapped())
+            for strip in getattr(self, "edges", []):
+                if strip.side != "right":
+                    continue
+                if has_bar:
+                    strip.place_forget()
+                elif not strip.winfo_ismapped():
+                    strip.place(relx=1.0, x=-EdgeResizer.EDGE, y=0,
+                                width=EdgeResizer.EDGE, relheight=1.0)
+                    strip.lift()
+        except Exception:
+            pass
 
     # ---------- Status chip ----------
     def _draw_chip(self, text, fg):

@@ -60,8 +60,8 @@ Win32 API，换成 macOS / Linux 会在 import 阶段就失败。
 
 ## 🚀 立即使用（无需编程 / No coding needed）
 
-1. 前往 [Releases 页面](../../releases)（已发布 v0.6.24）
-2. 下载 `SilverWolfPet-v0.6.24-win64.zip`（或 Releases 里最新版本）
+1. 前往 [Releases 页面](../../releases)（已发布 v0.6.25）
+2. 下载 `SilverWolfPet-v0.6.25-win64.zip`（或 Releases 里最新版本）
 3. 解压到任意文件夹（路径带中文也行），**双击 `SilverWolfPet.exe`**
 4. 主界面弹出（主页 / 聊天 / 设置），同时银狼出现在屏幕右下角！
 5. **想在桌面放图标**：双击包内的 `创建桌面快捷方式.bat`，
@@ -90,7 +90,7 @@ Win32 API，换成 macOS / Linux 会在 import 阶段就失败。
 步骤：
 1. 下载最新 Release 的 zip：
    https://github.com/yuannuo233/silver-wolf-desktop-pet/releases/latest
-   （资产名形如 SilverWolfPet-v0.6.24-win64.zip）
+   （资产名形如 SilverWolfPet-v0.6.25-win64.zip）
 2. 解压 zip 到任意目录（如 C:\Tools\SilverWolfPet）
 3. 运行 SilverWolfPet.exe；如遇 SmartScreen 蓝色警告，
    点击"更多信息"→"仍要运行"
@@ -239,3 +239,12 @@ python scripts/remove_background.py 你的图.png 输出.png 32
 ## License
 
 [MIT](LICENSE) + 附加条款（见 `LICENSE` 正文 ADDITIONAL TERMS）
+
+
+## 意见反馈 / 联系作者
+
+有建议、想法、bug，或者想一起做插件，欢迎写信给作者：
+
+**邮箱：daafeiyutanchi@qq.com**
+
+（这是非官方粉丝作品，作者是初中生，收到邮件不一定秒回，但都会看。）

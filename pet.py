@@ -26,6 +26,8 @@ import config
 import lines
 from ui import C
 
+FEEDBACK_EMAIL = "daafeiyutanchi@qq.com"   # 意见反馈邮箱 / where users send opinions
+
 KEY_COLOR = "magenta"
 IDLE_AMPLITUDE = 3
 IDLE_SPEED_MS = 60
@@ -687,6 +689,13 @@ class SilverWolfPet:
         except Exception:
             pass
 
+    def _show_feedback(self):
+        """Show the author's feedback email so users know where to send opinions."""
+        try:
+            self.show_bubble("意见反馈 / 提建议，写信给作者：\n" + FEEDBACK_EMAIL, 14000)
+        except Exception:
+            pass
+
     # ---------- mouse events ----------
 
     def _bind_events(self):
@@ -1029,6 +1038,7 @@ class SilverWolfPet:
             label="关于「跟着我做事」（只记录按键时间，不记录内容）",
             command=self._show_follow_explain,
         )
+        self.menu.add_command(label="意见反馈（作者邮箱）", command=self._show_feedback)
         self.menu.add_command(label="设置…", command=self.open_settings)
         size_menu = tk.Menu(self.menu, tearoff=0)
         for label, height in SIZE_PRESETS:
