@@ -26,7 +26,7 @@ import config
 import lines
 from ui import C
 
-FEEDBACK_EMAIL = "daafeiyutanchi@qq.com"   # 意见反馈邮箱 / where users send opinions
+FEEDBACK_EMAIL = "dafeiyutanchi@qq.com"   # 意见反馈邮箱 / where users send opinions
 
 KEY_COLOR = "magenta"
 IDLE_AMPLITUDE = 3

@@ -174,4 +174,4 @@ If any clause is held invalid or unenforceable, the remaining clauses stay in fu
 The Chinese text is authoritative. The author may update this document at any time; continued
 use after an update constitutes acceptance.
 
-意见反馈 / Feedback: daafeiyutanchi@qq.com
+意见反馈 / Feedback: dafeiyutanchi@qq.com
