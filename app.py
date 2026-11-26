@@ -16,7 +16,7 @@ from ui import C, F, Card, Pill, ThemeDots, label, rrect
 NAV = (("home", "主页", "◈"), ("chat", "聊天", "✧"),
        ("characters", "角色", "☰"), ("announce", "公告", "✉"),
        ("plugins", "插件", "⊞"), ("settings", "设置", "⚙"))
-VERSION = "v0.6.30"
+VERSION = "v0.6.31"
 
 
 def _force_foreground(hwnd):
@@ -920,6 +920,12 @@ class MainApp:
             if active:
                 label(row, "使用中", font=F["small"], fg=C["acc"], bg=C["card"]).grid(
                     row=0, column=3, padx=(12, 16))
+            elif not n:
+                # A pack with no frames on disk cannot be drawn. Offering a switch button
+                # here is how a user ends up with an unusable config and a start-up crash:
+                # the id gets saved, then Image.open() fails on every launch.
+                label(row, "不可切换", font=F["small"], fg=C["dim"], bg=C["card"]).grid(
+                    row=0, column=3, padx=(12, 16))
             else:
                 btn = Pill(row, "切换", kind="ghost", h=28, font=F["small"])
                 btn.grid(row=0, column=3, padx=(12, 16))
@@ -969,11 +975,19 @@ class MainApp:
         look broken: the list still showed the old character and the pet kept its old face.
         """
         try:
+            import characters
+            spec = characters.get(character_id)
+            # Refuse a pack that has no frames *before* touching the config: writing the id
+            # first is what made the next launch die inside Image.open().
+            if self._count_frames(spec) <= 0:
+                self._char_hint.configure(
+                    text="「%s」的图还没放进来，切过去启动会失败" % spec.get("name", character_id),
+                    fg=C["warn"])
+                return
             cfg = config.load()
             cfg["character"] = character_id
             config.save(cfg)
-            import characters
-            name = characters.get(character_id)["name"]
+            name = spec["name"]
             swapped = False
             if self.pet is not None:
                 try:
@@ -1104,6 +1118,9 @@ class MainApp:
             result = PE.ask(plugin, intents[0], {})
             text = result.get("text") or result.get("error") or "插件没有返回内容"
             if self.pet is not None:
+                payload = result.get("intent_payload")
+                if isinstance(payload, dict) and hasattr(self.pet, "_apply_plugin_payload"):
+                    self.pet._apply_plugin_payload(payload)
                 self.pet.show_bubble(text, 8000)
             if getattr(self, "_plugin_hint", None) is not None:
                 self._plugin_hint.configure(text="试了一下「%s」" % plugin.get("name", ""),

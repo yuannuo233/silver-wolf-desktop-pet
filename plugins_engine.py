@@ -18,6 +18,7 @@ Protocol (one JSON object per line):
 """
 
 import json
+import os
 import subprocess
 import sys
 import uuid
@@ -108,6 +109,7 @@ def _call(plugin: dict, payload: dict, timeout: int) -> dict:
             text=True,
             encoding="utf-8",
             errors="replace",
+            env={**os.environ, "PYTHONIOENCODING": "utf-8"},
             creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
         )
     except OSError as e:

@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 编译检查（compileall）
+        run: python -m compileall -q .
+
+      - name: 语法与风格（ruff）
+        run: |
+          pip install ruff
+          ruff check . --select F,E9 --ignore E501
+
+      - name: 单元测试
+        run: python -m unittest discover -s . -p "test_*.py" -v

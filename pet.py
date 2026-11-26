@@ -217,6 +217,7 @@ class SilverWolfPet:
         self._turning = False        # playing a turn transition; do not interrupt it with a run.
         self._click_job = None       # delayed single-click check (so a double-click can cancel it).
         self._act_state = None       # follow-activity state: None / typing / console.
+        self._last_face = "run_right"  # last LEFT/RIGHT facing; vertical travel keeps it.
         self._goto_target = None     # drop point she runs to at her own speed.
         self._goto_job = None
         self._goto_t = 0.0
@@ -262,7 +263,7 @@ class SilverWolfPet:
     def _load_sprite(self, target_height: int):
         src = self.hd_path or self.base_path
         if HAS_PIL:
-            img = Image.open(src).convert("RGBA")
+            img = self._open_fallback(src).convert("RGBA")
             scale = target_height / img.height
             size = (max(1, round(img.width * scale)), target_height)
             img = img.resize(size, Image.LANCZOS)
@@ -298,6 +299,27 @@ class SilverWolfPet:
             self.canvas.coords(self.sprite, self.width // 2, self.canvas_h // 2)
             x, y = self.win.winfo_x(), self.win.winfo_y()
             self.win.geometry(f"{self.width}x{self.canvas_h}+{x}+{y}")
+
+    def _open_fallback(self, src):
+        """Open the sprite, falling back to the built-in art when the pack is broken.
+
+        A character folder can exist with only character.json inside (the Lv999 placeholder
+        shipped that way). Before this, the first Image.open() raised FileNotFoundError while
+        the pet window was being built and the whole app died at start-up with a traceback the
+        user cannot act on. Falling back keeps her on screen so the settings page still opens.
+        """
+        try:
+            return Image.open(src)
+        except Exception:
+            root = Path(__file__).resolve().parent
+            for name in ("assets/silver_wolf_hd.png", "assets/silver_wolf.png"):
+                alt = root / name
+                try:
+                    return Image.open(alt)
+                except Exception:
+                    continue
+        # Last resort: a 1x1 transparent pixel. Ugly, but the app runs and can be fixed.
+        return Image.new("RGBA", (1, 1), (0, 0, 0, 0))
 
     def reload_character(self, character_id: str):
         """Swap the sprite set at runtime.
@@ -508,6 +530,8 @@ class SilverWolfPet:
     def set_anim_state(self, state):
         """Switch animation state (idle / run_right / run_left / turn / action)."""
         if self.anim and state in self.anim and state != self.anim_state:
+            if state in ("run_right", "run_left"):
+                self._last_face = state
             self.anim_state = state
             self.anim_idx = 0
             self._notify_state(state)
@@ -537,20 +561,27 @@ class SilverWolfPet:
         if abs(dx) >= abs(dy) * 0.6:                # mostly horizontal: side view
             state = "run_right" if dx > 0 else "run_left"
         else:
-            state = "run_right" if dy > 0 else "run_left"
+            # Straight up / down: there is no up- or down-facing artwork, so keep the side
+            # she is already showing. Deriving it from dy made an upward drag play the
+            # left-facing run and a downward drag the right-facing one, which is why she
+            # "ran left while moving right".
+            state = self._last_face
         if self.anim_state == state:
+            self._last_face = state
             return
         # Hysteresis: a reversal needs a real step behind it. Without this the sprite flips on
         # a 1~2px tremor while the cursor hovers, and each flip shows one frame facing the
         # wrong way — which the eye catches as "she ran backwards for a moment".
         if self.anim_state in ("run_left", "run_right"):
             if math.hypot(dx, dy) < FLIP_MIN_PX:
-                return
+                return                  # too small to be a real turn: keep facing the old way
             # Mid-run reversal: swap the cycle immediately, no pivot.
             self._turning = False
             self._pending_run = None
+            self._last_face = state
             self.set_anim_state(state)
         else:
+            self._last_face = state
             # Standing: show the turn. Forward motion pauses until it finishes (_move_step
             # returns early while self._turning), so the pivot is actually visible.
             self._start_run(state)
@@ -628,7 +659,9 @@ class SilverWolfPet:
                     if abs(tdx) >= abs(tdy) * 0.6:
                         self.anim_state = "run_right" if tdx > 0 else "run_left"
                     else:
-                        self.anim_state = "run_right" if tdy > 0 else "run_left"
+                        self.anim_state = self._last_face   # vertical: keep the side
+                    if self.anim_state in ("run_right", "run_left"):
+                        self._last_face = self.anim_state
             else:
                 self.anim_state = "idle"
                 self._action_live = False
@@ -972,10 +1005,12 @@ class SilverWolfPet:
     # ---------- plugin dispatch ----------
 
     def _try_plugin(self, text):
-        """If an enabled plugin can handle this message, run it and return its answer.
+        """If an enabled plugin matches this message, run it and return its answer.
 
-        This is the smallest useful version of "the pet can use plugins": a keyword check
-        picks the plugin, then we ask it. No AI function-calling yet — that is a later step.
+        Trigger words come from the plugin's "keywords" field (its intents are the
+        fallback). The user's whole message is passed on so the plugin can pick the
+        concrete action / city / etc. Any intent_payload returned is applied here so a
+        plugin can drive the pet (animation, character switch), not just talk.
         Returns the answer string, or None to let the normal AI chat handle it.
         """
         try:
@@ -983,30 +1018,45 @@ class SilverWolfPet:
             enabled = set(config.load().get("plugins_enabled", []))
             if not enabled:
                 return None
-            rules = {
-                "clock": ("几点", "现在几点", "时间", "报时", "星期几"),
-                "weather": ("天气", "下雨", "气温", "多少度", "冷不冷", "热不热"),
-            }
             for p in PE.list_plugins():
                 pid = p.get("id", "")
                 if pid not in enabled or not p.get("available"):
                     continue
-                words = rules.get(pid, ())
-                if not any(w in text for w in words):
+                words = p.get("keywords") or [w for w in (p.get("intents") or [])
+                                              if isinstance(w, str)]
+                if not words or not any(str(w) in text for w in words):
                     continue
                 intents = p.get("intents") or []
                 if not intents:
                     continue
                 result = PE.ask(p, intents[0], {"text": text})
-                if result.get("ok") and result.get("text"):
-                    return str(result["text"])
-                # Plugin failed -> let the user know, but do not silently fall through to AI
-                # (they would get a generic answer and never know the plugin broke).
+                if result.get("ok"):
+                    payload = result.get("intent_payload")
+                    if isinstance(payload, dict):
+                        self._apply_plugin_payload(payload)
+                    return str(result.get("text") or "")
                 return "插件「%s」没成功：%s" % (p.get("name", pid),
                                               result.get("error", "未知原因"))
         except Exception:
-            return None                     # plugin system itself broke -> normal chat
+            return None
         return None
+
+    def _apply_plugin_payload(self, payload):
+        """Apply a plugin's intent payload on the UI thread: animation / character.
+
+        Only states present in the current character's animation table actually play.
+        Display-only payloads (emotion / physics / status / dashboard) already have their
+        text shown in the bubble and need no extra action here.
+        """
+        kind = str(payload.get("type") or "")
+        if kind in ("play_action", "companion_action", "action"):
+            act = str(payload.get("action") or "")
+            if act and self.anim and act in self.anim:
+                self.play_action(act)
+        elif kind == "switch_character":
+            cid = str(payload.get("id") or "")
+            if cid:
+                self.reload_character(cid)
 
     def send_chat_text(self, text):
         """Send one user message (from the quick card OR the main chat page)."""

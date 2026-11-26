@@ -2,6 +2,49 @@
 
 All notable changes will be recorded here. 所有更新都会记录在这里。
 
+## 0.6.31 (2026-11-25) 右跑镜像重建 + 公告黑块 + 坏角色兜底
+- 冷淡版右跑 18 帧全部用左跑对应帧水平镜像重建（run_right_i = mirror(run_left_i) 逐像素相等），
+  解决「右跑素材没抠干净、与左跑不对称」
+- 修公告页黑块：ui.py Card 非 stretch 也监听 <Configure> 重绘，body 宽度跟随布局宽度，
+  长公告卡片铺满整行不再露底（560~1300px 窗宽实测正常）
+- 修跑步朝向：pet.py 竖直拖动不再切左右（dy>0→run_right 的旧判向删除，沿用 _last_face 水平朝向），
+  _face_travel / _tick_anim 两处 + set_anim_state 同步；FLIP_MIN_PX 微抖不再翻转
+- 角色页 0 帧角色显示「不可切换」；_switch_character 先数帧、0 帧拒绝且不写配置
+- pet.py _open_fallback：主图/高清图缺失时回退默认立绘 → 1x1 透明图，坏配置不再启动崩溃
+  （实测 character=silver_wolf_lv999 坏配置可正常启动，sprite 134x200）
+- check_mirror → ALL_EQUIVALENT
+
+## 0.6.30 (2026-11-24) 即时切换角色 + 修待机半垂眼
+- 切换角色立刻生效：之前点「切换」只保存配置、要重启才换，现在当场切换
+  （pet.py reload_character + app.py _switch_character，用 _anim_gen 代际计数让旧动画链自动退出）
+- 修「停下时表情突然变冷淡」：待机动画开头两帧眼睛半垂，每次停下从第一帧播会先冷一下；
+  把这两帧挪到循环末尾当一次自然眨眼
+- check_mirror → ALL_EQUIVALENT
+
+## 0.6.29 (2026-11-24) 冷淡素材重新抠图
+- 冷淡版 86 帧全部重抠：白边 0、脚底对齐 210、水平中心 95、画布 190×216
+
+## 0.6.28 (2026-11-24) 冷淡角色不再借开心脸
+- 删除借用逻辑 _borrow_missing_states：冷淡角色只用自己有的 5 个动作，
+  缺的 6 个动作（挥手/打盹/伸懒腰/吃棒棒糖/敲键盘/玩掌机）点了不响应，不再突然变开心脸
+
+## 0.6.27 (2026-11-24) 修 turn 帧污染 + 素材彻底隔离
+- 严重事故：v0.6.26 把冷淡帧写进了开心版的 assets/stand/turn_*，普通银狼转身时突然变冷淡脸；
+  从备份恢复并彻底分离两套素材（开心 assets/stand，冷淡 characters/silver_wolf_cold/stand）
+- 打包时把 characters 目录一起带进 exe，冷淡角色才能在角色页显示
+- 修正反馈邮箱（多打了一个 a → dafeiyutanchi@qq.com）、删除废弃旧素材目录
+- LIMITATIONS / PROTOCOL / TERMS 落款版本改 v0.6.27
+
+## 0.6.26 (2026-11-24) 冷淡角色 + 修两个空白 bug
+- 新增角色「银狼（冷淡）」：半垂眼、86 帧（待机含 5 次眨眼 / 转身左右各 9 / 跑步左右各 18）
+- 修公告页、角色页打开空白：Card(stretch=True) 在 ScrollablePage 里塌成 1px，改用非 stretch
+- 修加新角色时代码插入位置错误导致启动闪退
+
+## 0.6.25 (2026-11-24) 边缘拉伸 + 反馈邮箱
+- 无边框窗口加三条隐形拉伸边（左/右/下），像普通窗口那样拖边缘即可缩放
+- 修滚动条被右侧拉伸条盖住：_sync_edge_strips 在有滚动条时隐藏右侧条
+- 右键菜单加「意见反馈（作者邮箱）」→ dafeiyutanchi@qq.com
+
 ## 0.6.24 (2026-11-23) 插件系统 + 插件市场
 
 第三方反馈之后最大的一个功能更新。目标是把项目从"一个人的桌宠"
