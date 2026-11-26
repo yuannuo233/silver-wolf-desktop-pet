@@ -1,0 +1,25 @@
+{
+  "id": "pet-character",
+  "name": "角色管理",
+  "version": "1.0.0",
+  "author": "WorkBuddy",
+  "description": "列出角色包、统计磁盘真实帧数、切换当前角色（需重启生效）",
+  "entry": "main.py",
+  "intents": [
+    "character",
+    "角色",
+    "换角色",
+    "characters"
+  ],
+  "keywords": [
+    "换角色",
+    "切换角色",
+    "切换",
+    "换成",
+    "角色列表",
+    "有哪些角色",
+    "几个角色",
+    "换个人",
+    "角色"
+  ]
+}

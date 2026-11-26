@@ -51,7 +51,7 @@
   "id": "silver-wolf",
   "name": "银狼",
   "name_en": "Silver Wolf",
-  "version": "0.6.31",
+  "version": "0.6.32",
   "author": "yuannuo233",
   "license": "MIT (code) / fan-art (assets)",
   "attribution": "《崩坏：星穹铁道》非官方粉丝作品，不含游戏拆包素材",

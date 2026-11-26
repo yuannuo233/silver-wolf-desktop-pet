@@ -1,0 +1,25 @@
+{
+  "id": "pet-physics",
+  "name": "物理反馈",
+  "version": "1.0.0",
+  "author": "WorkBuddy",
+  "description": "Q弹回嘴 / 拖拽甩抛 / 屏幕边缘反弹的意图（需宿主物理引擎实现）",
+  "entry": "main.py",
+  "intents": [
+    "pet_physics",
+    "互动",
+    "物理",
+    "bounce",
+    "弹"
+  ],
+  "keywords": [
+    "互动",
+    "物理",
+    "弹一下",
+    "摸摸",
+    "戳一下",
+    "碰碰",
+    "弹跳",
+    "拍拍"
+  ]
+}

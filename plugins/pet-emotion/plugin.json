@@ -1,0 +1,25 @@
+{
+  "id": "pet-emotion",
+  "name": "情绪系统",
+  "version": "1.0.0",
+  "author": "WorkBuddy",
+  "description": "六情绪轴 + 情绪惯性 + 精力状态，状态持久化到本地 JSON",
+  "entry": "main.py",
+  "intents": [
+    "emotion",
+    "情绪",
+    "心情",
+    "mood",
+    "表情"
+  ],
+  "keywords": [
+    "情绪",
+    "心情",
+    "表情",
+    "开心吗",
+    "难过",
+    "心情怎么样",
+    "你开心",
+    "心情好不好"
+  ]
+}

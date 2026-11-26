@@ -2,6 +2,14 @@
 
 All notable changes will be recorded here. 所有更新都会记录在这里。
 
+## 0.6.32 (2026-11-26) 修开心版混入冷淡帧 + 打包版插件解释器
+- assets/stand 的 idle_03/idle_28/turn_right_06/turn_left_06 被冷淡版同名片污染（MAE 0.04~0.39），
+  从 v0.6.30 发布 exe 内嵌素材解出干净开心版恢复；删除未被 frames.json 引用的孤儿 idle_31/32（冷淡脸）
+- plugins_engine._python_exe：frozen 模式下 sys.executable 是桌宠 exe 不是 Python，
+  旧逻辑拿它跑插件=再开一个桌宠窗口、stdin 无应答→全部超时；改为 PATH/常见安装位找真 Python，
+  找不到时返回明确错误提示（装 Python 或插件提供 command/exe）
+- check_mirror → ALL_EQUIVALENT
+
 ## 0.6.31 (2026-11-25) 右跑镜像重建 + 公告黑块 + 坏角色兜底
 - 冷淡版右跑 18 帧全部用左跑对应帧水平镜像重建（run_right_i = mirror(run_left_i) 逐像素相等），
   解决「右跑素材没抠干净、与左跑不对称」

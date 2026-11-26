@@ -2,8 +2,23 @@
   "id": "clock",
   "name": "报时",
   "version": "1.0.0",
-  "author": "银狼官方示例",
-  "description": "告诉她现在几点。零依赖，用来演示插件怎么写。",
+  "author": "WorkBuddy",
+  "description": "告诉她现在几点，支持 UTC / IANA 时区",
   "entry": "main.py",
-  "intents": ["clock", "time"]
+  "intents": [
+    "clock",
+    "time",
+    "报时",
+    "时间"
+  ],
+  "keywords": [
+    "几点",
+    "现在几点",
+    "报时",
+    "星期几",
+    "几号",
+    "今天日期",
+    "时间",
+    "现在是什么时候"
+  ]
 }

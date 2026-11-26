@@ -1,0 +1,25 @@
+{
+  "id": "screen",
+  "name": "截屏",
+  "version": "1.0.0",
+  "author": "WorkBuddy",
+  "description": "截取主屏幕存 PNG，OCR 文字识别可选（缺依赖时降级）",
+  "entry": "main.py",
+  "intents": [
+    "screenshot",
+    "截图",
+    "截屏",
+    "ocr",
+    "屏幕"
+  ],
+  "keywords": [
+    "截图",
+    "截屏",
+    "屏幕",
+    "拍照",
+    "ocr",
+    "识别屏幕",
+    "看看屏幕",
+    "拍个照"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "pet-status",
+  "name": "状态查询",
+  "version": "1.0.0",
+  "author": "WorkBuddy",
+  "description": "汇总桌宠当前动作/情绪/角色/在线插件，供宿主同步（API Key 脱敏）",
+  "entry": "main.py",
+  "intents": [
+    "pet_status",
+    "状态",
+    "status",
+    "在干嘛"
+  ],
+  "keywords": [
+    "状态",
+    "在干嘛",
+    "你在干嘛",
+    "状况",
+    "你现在",
+    "忙不忙"
+  ]
+}

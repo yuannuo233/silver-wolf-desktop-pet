@@ -1,0 +1,25 @@
+{
+  "id": "pet-companion",
+  "name": "自主行为",
+  "version": "1.0.0",
+  "author": "WorkBuddy",
+  "description": "碎碎念、看鼠标、发呆、歪头等低频自主行为轮换（输出意图）",
+  "entry": "main.py",
+  "intents": [
+    "companion",
+    "陪伴",
+    "碎碎念",
+    "自主",
+    "idle_chatter"
+  ],
+  "keywords": [
+    "陪我",
+    "陪伴",
+    "碎碎念",
+    "陪会儿",
+    "说说话",
+    "陪我说",
+    "自主",
+    "陪陪我"
+  ]
+}

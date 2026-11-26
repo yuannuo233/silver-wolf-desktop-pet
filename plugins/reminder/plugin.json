@@ -1,0 +1,24 @@
+{
+  "id": "reminder",
+  "name": "提醒",
+  "version": "1.0.0",
+  "author": "WorkBuddy",
+  "description": "本地持久化提醒，支持增删查改和到期检查",
+  "entry": "main.py",
+  "intents": [
+    "reminder",
+    "提醒",
+    "待办",
+    "todo"
+  ],
+  "keywords": [
+    "提醒",
+    "待办",
+    "记事",
+    "记一下",
+    "别忘了",
+    "待办事项",
+    "清单",
+    "备忘录"
+  ]
+}

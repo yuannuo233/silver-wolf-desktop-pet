@@ -1,0 +1,25 @@
+{
+  "id": "pet-dashboard",
+  "name": "数据看板",
+  "version": "1.0.0",
+  "author": "WorkBuddy",
+  "description": "聚合时间 + 提醒 + 状态，一条消息播报（可附天气）",
+  "entry": "main.py",
+  "intents": [
+    "dashboard",
+    "看板",
+    "今日",
+    "日报",
+    "summary"
+  ],
+  "keywords": [
+    "看板",
+    "今日",
+    "日报",
+    "统计",
+    "总结",
+    "数据",
+    "报告",
+    "今天怎么样"
+  ]
+}

@@ -2,8 +2,23 @@
   "id": "weather",
   "name": "天气",
   "version": "1.0.0",
-  "author": "你的朋友",
-  "description": "播报今天的天气。用和风天气（国内服务，免费、邮箱注册）。",
+  "author": "WorkBuddy",
+  "description": "查当前天气和未来预报，Open-Meteo 免 API key",
   "entry": "main.py",
-  "intents": ["weather"]
+  "intents": [
+    "weather",
+    "天气",
+    "气温",
+    "forecast"
+  ],
+  "keywords": [
+    "天气",
+    "下雨",
+    "气温",
+    "多少度",
+    "冷不冷",
+    "热不热",
+    "温度",
+    "天气预报"
+  ]
 }

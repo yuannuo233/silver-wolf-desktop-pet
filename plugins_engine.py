@@ -82,6 +82,37 @@ def ask(plugin: dict, intent: str, args: dict = None) -> dict:
     }, timeout=TIMEOUT_S)
 
 
+def _python_exe() -> str:
+    """A real Python interpreter for running plugin scripts.
+
+    In a PyInstaller onefile build sys.executable is the pet exe itself, not Python:
+    launching it with a script argument just opens a second pet window that never answers
+    stdin, so every plugin "times out". Prefer an installed python found on PATH; fall back
+    to sys.executable only when we are genuinely running from source.
+    """
+    if not getattr(sys, "frozen", False):
+        return sys.executable
+    import shutil
+    for name in ("python", "python3", "py"):
+        found = shutil.which(name)
+        if found:
+            return found
+    # PATH 里没有时，试几个常见安装位置（用户机器不一定把 Python 加进 PATH）
+    import os
+    local = os.environ.get("LOCALAPPDATA", "")
+    cands = []
+    if local:
+        base = Path(local) / "Programs" / "Python"
+        if base.is_dir():
+            cands += sorted(base.glob("Python*/python.exe"), reverse=True)
+    cands += [Path(r"C:\Python313\python.exe"), Path(r"C:\Python312\python.exe"),
+              Path(r"C:\Python311\python.exe"), Path(r"C:\Python310\python.exe")]
+    for c in cands:
+        if c.exists():
+            return str(c)
+    return ""
+
+
 def _call(plugin: dict, payload: dict, timeout: int) -> dict:
     """Launch the plugin, write one line, read one line, always clean up."""
     entry = plugin.get("entry") or "main.py"
@@ -89,15 +120,19 @@ def _call(plugin: dict, payload: dict, timeout: int) -> dict:
     if not exe.exists():
         return {"t": "reply", "ok": False, "error": "找不到入口文件: %s" % entry}
 
-    # Which python to use: the one running us. For non-Python plugins the manifest can set
-    # "command" to a full command line, e.g. ["node", "index.js"].
+    # Which python to use: a real interpreter (see _python_exe). For non-Python plugins the
+    # manifest can set "command" to a full command line, e.g. ["node", "index.js"].
     cmd = plugin.get("command")
     if cmd:
         argv = list(cmd)
         if "{entry}" in argv:
             argv = [str(exe) if a == "{entry}" else a for a in argv]
     else:
-        argv = [sys.executable, str(exe)]
+        py = _python_exe()
+        if not py:
+            return {"t": "reply", "ok": False,
+                    "error": "这台电脑没装 Python，跑不了 .py 插件。装一个 Python 3 并勾选 Add to PATH，或让插件作者提供 exe 版（plugin.json 里写 command）。"}
+        argv = [py, str(exe)]
 
     try:
         p = subprocess.Popen(
