@@ -82,6 +82,28 @@ def ask(plugin: dict, intent: str, args: dict = None) -> dict:
     }, timeout=TIMEOUT_S)
 
 
+_PY_EXE_CACHE = None
+
+
+def _is_store_stub(path: str) -> bool:
+    """Windows ships fake python.exe shims under WindowsApps that only open the Store."""
+    low = path.replace("/", "\\").lower()
+    return "\\windowsapps\\" in low
+
+
+def _works(exe: str) -> bool:
+    """Run `exe -c print(1)` once; a real interpreter prints 1 and exits 0."""
+    try:
+        p = subprocess.run(
+            [exe, "-c", "print(1)"],
+            capture_output=True, text=True, timeout=5,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+        )
+        return p.returncode == 0 and (p.stdout or "").strip().startswith("1")
+    except Exception:
+        return False
+
+
 def _python_exe() -> str:
     """A real Python interpreter for running plugin scripts.
 
@@ -89,27 +111,44 @@ def _python_exe() -> str:
     launching it with a script argument just opens a second pet window that never answers
     stdin, so every plugin "times out". Prefer an installed python found on PATH; fall back
     to sys.executable only when we are genuinely running from source.
+
+    Windows also ships App Execution Alias stubs (WindowsApps/python.exe) that look like
+    python on PATH but only print "Python was not found ... Microsoft Store". Skip those
+    and verify each candidate actually runs before trusting it.
     """
+    global _PY_EXE_CACHE
     if not getattr(sys, "frozen", False):
         return sys.executable
+    if _PY_EXE_CACHE is not None:
+        return _PY_EXE_CACHE
     import shutil
+    cands = []
     for name in ("python", "python3", "py"):
         found = shutil.which(name)
         if found:
-            return found
+            cands.append(found)
     # PATH 里没有时，试几个常见安装位置（用户机器不一定把 Python 加进 PATH）
-    import os
     local = os.environ.get("LOCALAPPDATA", "")
-    cands = []
     if local:
         base = Path(local) / "Programs" / "Python"
         if base.is_dir():
-            cands += sorted(base.glob("Python*/python.exe"), reverse=True)
-    cands += [Path(r"C:\Python313\python.exe"), Path(r"C:\Python312\python.exe"),
-              Path(r"C:\Python311\python.exe"), Path(r"C:\Python310\python.exe")]
+            cands += [str(p) for p in sorted(base.glob("Python*/python.exe"), reverse=True)]
+    cands += [r"C:\Python313\python.exe", r"C:\Python312\python.exe",
+              r"C:\Python311\python.exe", r"C:\Python310\python.exe"]
+    seen = set()
     for c in cands:
-        if c.exists():
-            return str(c)
+        key = c.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        if _is_store_stub(c):
+            continue
+        if not Path(c).exists():
+            continue
+        if _works(c):
+            _PY_EXE_CACHE = c
+            return c
+    _PY_EXE_CACHE = ""
     return ""
 
 

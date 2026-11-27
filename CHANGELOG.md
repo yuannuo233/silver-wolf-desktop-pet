@@ -2,6 +2,14 @@
 
 All notable changes will be recorded here. 所有更新都会记录在这里。
 
+## 0.6.33 (2026-11-27) 修插件误认 Windows 商店假 Python
+- plugins_engine._python_exe：Windows 的 App Execution Alias（%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe）
+  只是跳转微软商店的占位符，shutil.which 会命中它，导致插件 stderr 报
+  "Python was not found; run without arguments to install from the Microsoft Store..."
+- 新增 _is_store_stub() 跳过 WindowsApps 路径；新增 _works() 对每个候选实际跑 `-c print(1)` 验证；
+  结果缓存 _PY_EXE_CACHE 避免重复探测；全部不可用时返回 "" 走既有中文提示
+- check_mirror → ALL_EQUIVALENT（plugins_engine.py 已纳入比对清单）
+
 ## 0.6.32 (2026-11-26) 修开心版混入冷淡帧 + 打包版插件解释器
 - assets/stand 的 idle_03/idle_28/turn_right_06/turn_left_06 被冷淡版同名片污染（MAE 0.04~0.39），
   从 v0.6.30 发布 exe 内嵌素材解出干净开心版恢复；删除未被 frames.json 引用的孤儿 idle_31/32（冷淡脸）
